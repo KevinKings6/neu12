@@ -70,7 +70,13 @@ export default function AdminChat() {
   // Funkgerät Kanäle (von Backend geladen)
   const [channels, setChannels] = useState<ChatGroup[]>([]);
 
-  // Admin profile management
+  // Voice recording states
+  const [isRecording, setIsRecording] = useState(false);
+  const [recordingUri, setRecordingUri] = useState<string | null>(null);
+  const [recording, setRecording] = useState<Audio.Recording | null>(null);
+  const [playingMessageId, setPlayingMessageId] = useState<string | null>(null);
+
+  // Modal states
   const [adminProfileModalVisible, setAdminProfileModalVisible] = useState(false);
   const [adminName, setAdminName] = useState('');
 
