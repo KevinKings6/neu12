@@ -545,7 +545,7 @@ export default function AdminDashboard() {
           )}
         </View>
       )}
-    </View>
+    </TouchableOpacity>
   );
 
   const renderUser = ({ item }: { item: User }) => (
