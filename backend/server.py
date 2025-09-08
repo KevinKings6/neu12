@@ -724,13 +724,25 @@ async def create_chat_group(group: ChatGroupCreate, current_admin: User = Depend
     return ChatGroup(**created_group)
 
 
-@api_router.get("/admin/chat/groups", response_model=List[ChatGroup])
+@api_router.get("/admin/chat/groups")
 async def get_chat_groups(current_admin: User = Depends(get_current_admin_user)):
     """Admin gets all chat groups"""
     groups = await db.chat_groups.find({"is_active": True}).to_list(1000)
+    result = []
     for group in groups:
-        group["_id"] = str(group["_id"])
-    return [ChatGroup(**group) for group in groups]
+        # Normalize _id to id for frontend compatibility
+        group_dict = {
+            "id": str(group["_id"]),
+            "_id": str(group["_id"]),
+            "name": group.get("name", ""),
+            "description": group.get("description"),
+            "created_by": group.get("created_by", ""),
+            "members": group.get("members", []),
+            "is_active": group.get("is_active", True),
+            "created_at": group.get("created_at")
+        }
+        result.append(group_dict)
+    return result
 
 
 @api_router.put("/admin/chat/groups/{group_id}", response_model=ChatGroup)
