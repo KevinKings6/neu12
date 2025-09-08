@@ -1084,6 +1084,28 @@ const styles = StyleSheet.create({
     color: '#fff',
     fontSize: 14,
   },
+  messageActions: {
+    flexDirection: 'row',
+    justifyContent: 'flex-end',
+    marginTop: 8,
+    gap: 8,
+  },
+  editMessageButton: {
+    backgroundColor: '#007bff',
+    borderRadius: 12,
+    width: 24,
+    height: 24,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  deleteMessageButton: {
+    backgroundColor: '#dc3545',
+    borderRadius: 12,
+    width: 24,
+    height: 24,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
   inputContainer: {
     flexDirection: 'row',
     alignItems: 'flex-end',
