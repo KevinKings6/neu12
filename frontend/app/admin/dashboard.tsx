@@ -77,7 +77,7 @@ export default function AdminDashboard() {
 
   // User role management
   const [roleModalVisible, setRoleModalVisible] = useState(false);
-  const [selectedRole, setSelectedRole] = useState<'user' | 'team' | 'admin'>('user');
+  const [selectedRole, setSelectedRole] = useState<'user' | 'team' | 'admin' | 'emergency'>('user');
 
   useEffect(() => {
     if (!isAdmin()) {
