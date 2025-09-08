@@ -663,7 +663,8 @@ export default function AdminDashboard() {
     if (!selectedUser || !token) return;
 
     try {
-      const response = await fetch(`${BACKEND_URL}/api/admin/users/${selectedUser.id}/role`, {
+      const userId = selectedUser._id || selectedUser.id;
+      const response = await fetch(`${BACKEND_URL}/api/admin/users/${userId}/role`, {
         method: 'PUT',
         headers: {
           'Content-Type': 'application/json',
@@ -677,7 +678,9 @@ export default function AdminDashboard() {
         await loadUsers();
         Alert.alert('Erfolg', `Benutzerrang wurde auf "${selectedRole}" geändert`);
       } else {
-        Alert.alert('Fehler', 'Benutzerrang konnte nicht geändert werden');
+        const errorData = await response.json();
+        console.error('Role update error:', errorData);
+        Alert.alert('Fehler', errorData.detail || 'Benutzerrang konnte nicht geändert werden');
       }
     } catch (error) {
       console.error('Error updating user role:', error);
