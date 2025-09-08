@@ -838,6 +838,50 @@ async def update_admin_profile(profile_data: UpdateAdminProfile, current_admin: 
     return User(**updated_user)
 
 
+# Test endpoint for creating test users with different roles
+@api_router.post("/admin/test-user-role")
+async def create_test_users_with_roles(current_admin: User = Depends(get_current_admin_user)):
+    """Test endpoint to create test users with different roles"""
+    try:
+        # Create test users with different roles
+        test_users = [
+            {
+                "username": "testuser1",
+                "email": "user@test.com", 
+                "full_name": "Test User",
+                "role": "user",
+                "is_active": True,
+                "created_at": datetime.utcnow()
+            },
+            {
+                "username": "testteam1", 
+                "email": "team@test.com",
+                "full_name": "Test Team Member",
+                "role": "team",
+                "is_active": True,
+                "created_at": datetime.utcnow()
+            }
+        ]
+        
+        created_users = []
+        for user_data in test_users:
+            # Check if user already exists
+            existing_user = await db.users.find_one({"email": user_data["email"]})
+            if not existing_user:
+                # Hash password
+                user_data["hashed_password"] = get_password_hash("test123")
+                result = await db.users.insert_one(user_data)
+                created_users.append(user_data["username"])
+        
+        if created_users:
+            return {"message": f"Test users created with different roles: {', '.join(created_users)}"}
+        else:
+            return {"message": "Test users already exist"}
+    except Exception as e:
+        print(f"Error creating test users: {e}")
+        raise HTTPException(status_code=500, detail=f"Error creating test users: {str(e)}")
+
+
 # Health check
 @api_router.get("/")
 async def root():
