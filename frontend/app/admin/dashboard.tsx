@@ -793,7 +793,7 @@ export default function AdminDashboard() {
         </TouchableOpacity>
         <TouchableOpacity
           style={[styles.tab, activeTab === 'chat' && styles.activeTab]}
-          onPress={() => router.push('/admin/chat')}
+          onPress={() => router.push('/admin/funkgeraet')}
         >
           <MaterialIcons name="radio" size={14} color={activeTab === 'chat' ? '#ff4444' : '#888'} />
           <Text style={[styles.tabText, activeTab === 'chat' && styles.activeTabText]}>
