@@ -226,13 +226,47 @@ export default function Profile() {
           
           <View style={styles.inputGroup}>
             <Text style={styles.inputLabel}>Full Name *</Text>
-            <TextInput
-              style={styles.textInput}
-              value={profile.name}
-              onChangeText={(text) => setProfile({ ...profile, name: text })}
-              placeholder="Enter your full name"
-              placeholderTextColor="#666"
-            />
+            {editingName ? (
+              <View style={styles.nameEditContainer}>
+                <TextInput
+                  style={[styles.textInput, styles.nameInput]}
+                  value={tempName}
+                  onChangeText={setTempName}
+                  placeholder="Ihr vollständiger Name"
+                  maxLength={100}
+                  autoFocus
+                />
+                <View style={styles.nameActions}>
+                  <TouchableOpacity
+                    style={[styles.nameActionButton, styles.cancelButton]}
+                    onPress={cancelEditingName}
+                  >
+                    <Text style={styles.cancelButtonText}>Abbrechen</Text>
+                  </TouchableOpacity>
+                  <TouchableOpacity
+                    style={[styles.nameActionButton, styles.saveButton]}
+                    onPress={saveNameChange}
+                    disabled={loading}
+                  >
+                    <Text style={styles.saveButtonText}>
+                      {loading ? 'Speichern...' : 'Speichern'}
+                    </Text>
+                  </TouchableOpacity>
+                </View>
+              </View>
+            ) : (
+              <View style={styles.nameDisplayContainer}>
+                <Text style={styles.nameDisplay}>
+                  {profile.name || 'Noch kein Name eingegeben'}
+                </Text>
+                <TouchableOpacity
+                  style={styles.editNameButton}
+                  onPress={startEditingName}
+                >
+                  <Text style={styles.editNameButtonText}>✏️ Bearbeiten</Text>
+                </TouchableOpacity>
+              </View>
+            )}
           </View>
 
           <View style={styles.inputGroup}>
