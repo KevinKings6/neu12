@@ -2455,6 +2455,11 @@ class EmergencySOSAPITester:
         # Test Funkgerät (Radio) System API
         self.test_funkgeraet_system_api()
         
+        # NEW SOS & PROFILE FEATURES (German Emergency System)
+        self.test_sos_activation_management()
+        self.test_profile_name_update()
+        self.test_integration_sos_and_profile()
+        
         # Print summary
         self.print_summary()
 
