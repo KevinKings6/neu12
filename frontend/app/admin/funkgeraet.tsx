@@ -911,6 +911,43 @@ export default function FunkgeraetScreen() {
         </View>
       </Modal>
 
+      {/* Edit Message Modal */}
+      <Modal
+        animationType="slide"
+        transparent={true}
+        visible={editMessageModalVisible}
+        onRequestClose={() => setEditMessageModalVisible(false)}
+      >
+        <View style={styles.modalOverlay}>
+          <View style={styles.modalContent}>
+            <View style={styles.modalHeader}>
+              <TouchableOpacity onPress={() => setEditMessageModalVisible(false)}>
+                <Text style={styles.cancelButton}>Abbrechen</Text>
+              </TouchableOpacity>
+              <Text style={styles.modalTitle}>✏️ Nachricht bearbeiten</Text>
+              <TouchableOpacity onPress={saveEditedMessage}>
+                <Text style={styles.saveButton}>Speichern</Text>
+              </TouchableOpacity>
+            </View>
+
+            <View style={styles.modalForm}>
+              <View style={styles.inputGroup}>
+                <Text style={styles.inputLabel}>Nachricht *</Text>
+                <TextInput
+                  style={styles.textModalInput}
+                  value={editMessageText}
+                  onChangeText={setEditMessageText}
+                  placeholder="Nachricht eingeben..."
+                  placeholderTextColor="#666"
+                  multiline
+                  maxLength={500}
+                />
+              </View>
+            </View>
+          </View>
+        </View>
+      </Modal>
+      
       {/* Admin Profile Modal */}
       <Modal
         animationType="slide"
