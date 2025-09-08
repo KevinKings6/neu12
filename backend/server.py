@@ -81,8 +81,7 @@ class EmergencyContact(BaseModel):
     is_primary: bool = False
     created_at: datetime = Field(default_factory=datetime.utcnow)
 
-    class Config:
-        allow_population_by_field_name = True
+    model_config = {"populate_by_name": True}
 
 
 class EmergencyContactCreate(BaseModel):
