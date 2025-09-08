@@ -468,7 +468,8 @@ export default function FunkgeraetScreen() {
     
     try {
       if (editingChannel) {
-        const response = await fetch(`${BACKEND_URL}/api/admin/chat/groups/${editingChannel.id}`, {
+        const channelId = editingChannel.id || editingChannel._id;
+        const response = await fetch(`${BACKEND_URL}/api/admin/chat/groups/${channelId}`, {
           method: 'PUT',
           headers: {
             'Content-Type': 'application/json',
@@ -483,7 +484,7 @@ export default function FunkgeraetScreen() {
         if (response.ok) {
           const updatedChannel = await response.json();
           setChannels(prev => prev.map(c => 
-            c.id === editingChannel.id 
+            (c.id === channelId || c._id === channelId)
               ? { ...updatedChannel, id: updatedChannel.id || updatedChannel._id }
               : c
           ));
