@@ -132,7 +132,7 @@ class CriticalMemoryTester:
                 
                 if response.status_code == 200:
                     created_user = response.json()
-                    user_id = created_user.get("id")
+                    user_id = created_user.get("id") or created_user.get("_id")
                     if user_id:
                         self.test_user_ids.append(user_id)
                     
