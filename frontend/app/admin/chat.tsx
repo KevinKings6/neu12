@@ -113,8 +113,8 @@ export default function AdminChat() {
       await newRecording.prepareToRecordAsync(Audio.RECORDING_OPTIONS_PRESET_HIGH_QUALITY);
       await newRecording.startAsync();
       
-      setRecording(newRecording);
-      setIsRecording(true);
+      setVoiceRecording(newRecording);
+      setIsRecordingVoice(true);
     } catch (error) {
       console.error('Failed to start recording:', error);
       Alert.alert('Fehler', 'Aufnahme konnte nicht gestartet werden');
