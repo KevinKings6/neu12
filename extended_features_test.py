@@ -14,6 +14,7 @@ from typing import Dict, Any, List, Optional
 
 # Backend API base URL from frontend environment
 BASE_URL = "https://emergency-sos-3.preview.emergentagent.com/api"
+INTERNAL_URL = "http://localhost:8001/api"  # For endpoints with Kubernetes ingress limitations
 
 class ExtendedFeaturesAPITester:
     def __init__(self):
