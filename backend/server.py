@@ -595,7 +595,9 @@ async def update_user_role(user_id: str, role_data: UpdateUserRole, current_admi
     if role_data.role not in ["admin", "user", "team", "emergency"]:
         raise HTTPException(status_code=400, detail="Invalid role")
     
-    if user_id == current_admin.id:
+    # Convert current_admin.id to string for comparison
+    current_admin_id_str = str(current_admin.id)
+    if user_id == current_admin_id_str:
         raise HTTPException(status_code=400, detail="Cannot change your own role")
     
     result = await db.users.update_one(
