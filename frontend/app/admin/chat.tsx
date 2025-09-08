@@ -928,6 +928,14 @@ const styles = StyleSheet.create({
     borderBottomWidth: 1,
     borderBottomColor: '#ff4444',
   },
+  headerActions: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  headerActionButton: {
+    marginLeft: 15,
+    padding: 5,
+  },
   headerCenter: {
     flex: 1,
     alignItems: 'center',
