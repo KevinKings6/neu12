@@ -945,7 +945,8 @@ async def toggle_user_status(user_id: str, current_admin: User = Depends(get_cur
             raise HTTPException(status_code=400, detail="Invalid user ID")
         
         # Don't allow toggling own status
-        if user_id == current_admin.id:
+        current_admin_id_str = str(current_admin.id)
+        if user_id == current_admin_id_str:
             raise HTTPException(status_code=400, detail="Cannot toggle own status")
         
         # Get current user status
