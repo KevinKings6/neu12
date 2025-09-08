@@ -109,7 +109,7 @@ class ExtendedFeaturesAPITester:
                     users = users_response.json()
                     for user in users:
                         if user.get("username") == "testuser_extended":
-                            self.test_user_id = user.get("id")
+                            self.test_user_id = user.get("id") or user.get("_id")
                             print(f"✅ Found test user ID: {self.test_user_id}")
                             break
             except Exception as e:
