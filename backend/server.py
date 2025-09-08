@@ -908,8 +908,8 @@ async def test_user_role_update():
             # Check if user already exists
             existing_user = await db.users.find_one({"email": user_data["email"]})
             if not existing_user:
-                # Hash password
-                user_data["password"] = hash_password(user_data["password"])
+                user_data["hashed_password"] = get_password_hash(user_data["password"])
+                del user_data["password"]
                 await db.users.insert_one(user_data)
         
         return {"message": "Test users created with different roles"}
