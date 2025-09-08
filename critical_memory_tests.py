@@ -216,7 +216,7 @@ class CriticalMemoryTester:
                         
                         if users_response.status_code == 200:
                             users = users_response.json()
-                            updated_user = next((u for u in users if u.get("id") == user_id), None)
+                            updated_user = next((u for u in users if u.get("id") == user_id or u.get("_id") == user_id), None)
                             
                             if updated_user and updated_user.get("role") == role:
                                 self.log_test(
