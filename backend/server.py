@@ -921,6 +921,119 @@ def hash_password(password: str) -> str:
     return pwd_context.hash(password)
 
 
+# Chat message management endpoints
+@api_router.put("/admin/chat/{message_id}")
+async def update_chat_message(message_id: str, request: dict, current_admin: User = Depends(get_current_admin_user)):
+    """Admin or message owner updates a chat message"""
+    try:
+        if not ObjectId.is_valid(message_id):
+            raise HTTPException(status_code=400, detail="Invalid message ID")
+        
+        # Get the message
+        message = await db.chat_messages.find_one({"_id": ObjectId(message_id)})
+        if not message:
+            raise HTTPException(status_code=404, detail="Message not found")
+        
+        # Check if user can edit (owner or admin)
+        if message["user_id"] != current_admin.id and current_admin.role != "admin":
+            raise HTTPException(status_code=403, detail="Not authorized to edit this message")
+        
+        # Update message
+        new_message = request.get("message", "").strip()
+        if not new_message:
+            raise HTTPException(status_code=400, detail="Message cannot be empty")
+        
+        result = await db.chat_messages.update_one(
+            {"_id": ObjectId(message_id)},
+            {"$set": {"message": new_message, "updated_at": datetime.utcnow()}}
+        )
+        
+        return {"message": "Chat message updated successfully"}
+    except Exception as e:
+        print(f"Error updating chat message: {e}")
+        raise HTTPException(status_code=500, detail="Internal server error")
+
+@api_router.delete("/admin/chat/{message_id}")
+async def delete_chat_message(message_id: str, current_admin: User = Depends(get_current_admin_user)):
+    """Admin or message owner deletes a chat message"""
+    try:
+        if not ObjectId.is_valid(message_id):
+            raise HTTPException(status_code=400, detail="Invalid message ID")
+        
+        # Get the message
+        message = await db.chat_messages.find_one({"_id": ObjectId(message_id)})
+        if not message:
+            raise HTTPException(status_code=404, detail="Message not found")
+        
+        # Check if user can delete (owner or admin)
+        if message["user_id"] != current_admin.id and current_admin.role != "admin":
+            raise HTTPException(status_code=403, detail="Not authorized to delete this message")
+        
+        # Delete message
+        await db.chat_messages.delete_one({"_id": ObjectId(message_id)})
+        
+        return {"message": "Chat message deleted successfully"}
+    except Exception as e:
+        print(f"Error deleting chat message: {e}")
+        raise HTTPException(status_code=500, detail="Internal server error")
+
+# Enhanced user management for Test Emergency User
+@api_router.post("/admin/users/{user_id}/toggle-status")
+async def toggle_user_status(user_id: str, current_admin: User = Depends(get_current_admin_user)):
+    """Admin toggles user active/inactive status"""
+    try:
+        if not ObjectId.is_valid(user_id):
+            raise HTTPException(status_code=400, detail="Invalid user ID")
+        
+        # Don't allow toggling own status
+        if user_id == current_admin.id:
+            raise HTTPException(status_code=400, detail="Cannot toggle own status")
+        
+        # Get current user status
+        user = await db.users.find_one({"_id": ObjectId(user_id)})
+        if not user:
+            raise HTTPException(status_code=404, detail="User not found")
+        
+        new_status = not user.get("is_active", True)
+        
+        # Update user status
+        result = await db.users.update_one(
+            {"_id": ObjectId(user_id)},
+            {"$set": {"is_active": new_status}}
+        )
+        
+        status_text = "aktiviert" if new_status else "gesperrt"
+        return {"message": f"Benutzer wurde {status_text}", "is_active": new_status}
+    except Exception as e:
+        print(f"Error toggling user status: {e}")
+        raise HTTPException(status_code=500, detail="Internal server error")
+
+# Test endpoint for creating emergency user role
+@api_router.post("/admin/create-emergency-user")
+async def create_emergency_user(current_admin: User = Depends(get_current_admin_user)):
+    """Create a test emergency user"""
+    try:
+        emergency_user = {
+            "username": "emergencyuser",
+            "email": "emergency@test.com",
+            "full_name": "Test Emergency User",
+            "role": "emergency",
+            "is_active": True,
+            "hashed_password": get_password_hash("emergency123"),
+            "created_at": datetime.utcnow()
+        }
+        
+        # Check if user already exists
+        existing_user = await db.users.find_one({"email": emergency_user["email"]})
+        if existing_user:
+            return {"message": "Test Emergency User already exists"}
+        
+        result = await db.users.insert_one(emergency_user)
+        return {"message": "Test Emergency User created successfully", "user_id": str(result.inserted_id)}
+    except Exception as e:
+        print(f"Error creating emergency user: {e}")
+        raise HTTPException(status_code=500, detail="Internal server error")
+
 if __name__ == "__main__":
     import uvicorn
     uvicorn.run(app, host="0.0.0.0", port=8000)
