@@ -78,7 +78,7 @@ class CriticalMemoryTester:
                 token_data = response.json()
                 self.admin_token = token_data.get("access_token")
                 admin_user = token_data.get("user", {})
-                self.admin_user_id = admin_user.get("id")
+                self.admin_user_id = admin_user.get("id") or admin_user.get("_id")
                 print(f"✅ Admin login successful")
             else:
                 print(f"❌ Admin login failed: {response.status_code}")
