@@ -41,6 +41,8 @@ export default function Profile() {
     emergency_message: ''
   });
   const [loading, setLoading] = useState(false);
+  const [editingName, setEditingName] = useState(false);
+  const [tempName, setTempName] = useState('');
   const [newCondition, setNewCondition] = useState('');
   const [newAllergy, setNewAllergy] = useState('');
   const [newMedication, setNewMedication] = useState('');
