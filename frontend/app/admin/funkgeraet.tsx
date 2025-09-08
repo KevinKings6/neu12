@@ -528,11 +528,27 @@ export default function FunkgeraetScreen() {
   };
 
   const deleteChannel = async (channelId: string) => {
-    if (!token) return;
+    if (!token) {
+      Alert.alert('Fehler', 'Kein Token verfügbar');
+      return;
+    }
+    
+    console.log('DELETE CHANNEL DEBUG:', {
+      channelId,
+      channels: channels.length,
+      backend_url: BACKEND_URL,
+      token_length: token.length
+    });
     
     // Get the actual ID (could be _id from MongoDB)
     const channel = channels.find(c => c.id === channelId || c._id === channelId);
     const actualId = channel?.id || channel?._id || channelId;
+    
+    console.log('DELETE CHANNEL - Found channel:', {
+      channel,
+      actualId,
+      originalId: channelId
+    });
     
     Alert.alert(
       'Kanal löschen',
@@ -546,26 +562,65 @@ export default function FunkgeraetScreen() {
             setLoading(true);
             
             try {
-              const response = await fetch(`${BACKEND_URL}/api/admin/chat/groups/${actualId}`, {
+              const deleteUrl = `${BACKEND_URL}/api/admin/chat/groups/${actualId}`;
+              console.log('DELETE REQUEST:', {
+                url: deleteUrl,
+                method: 'DELETE',
+                headers: { Authorization: `Bearer ${token.substring(0, 20)}...` }
+              });
+              
+              const response = await fetch(deleteUrl, {
                 method: 'DELETE',
                 headers: {
                   'Authorization': `Bearer ${token}`,
                 },
               });
 
+              console.log('DELETE RESPONSE:', {
+                status: response.status,
+                statusText: response.statusText,
+                ok: response.ok
+              });
+
               if (response.ok) {
-                setChannels(prev => prev.filter(c => c.id !== channelId && c._id !== channelId));
-                if (selectedGroup === channelId) {
+                // Remove from local state immediately
+                setChannels(prev => {
+                  const newChannels = prev.filter(c => 
+                    c.id !== channelId && 
+                    c._id !== channelId && 
+                    c.id !== actualId && 
+                    c._id !== actualId
+                  );
+                  console.log('CHANNELS AFTER DELETE:', {
+                    before: prev.length,
+                    after: newChannels.length,
+                    removedId: actualId
+                  });
+                  return newChannels;
+                });
+                
+                if (selectedGroup === channelId || selectedGroup === actualId) {
                   setSelectedGroup(null);
                 }
+                
                 Alert.alert('Erfolg', 'Kanal wurde gelöscht!');
-                await loadChannels(); // Reload channels to get fresh data
+                
+                // Reload channels from server to ensure consistency
+                setTimeout(() => {
+                  loadChannels();
+                }, 500);
               } else {
-                Alert.alert('Fehler', 'Kanal konnte nicht gelöscht werden');
+                const errorText = await response.text();
+                console.error('DELETE FAILED:', {
+                  status: response.status,
+                  statusText: response.statusText,
+                  errorText
+                });
+                Alert.alert('Fehler', `Kanal konnte nicht gelöscht werden (${response.status})`);
               }
             } catch (error) {
-              console.error('Error deleting channel:', error);
-              Alert.alert('Fehler', 'Fehler beim Löschen des Kanals');
+              console.error('DELETE ERROR:', error);
+              Alert.alert('Fehler', `Fehler beim Löschen des Kanals: ${error.message}`);
             } finally {
               setLoading(false);
             }
