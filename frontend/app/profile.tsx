@@ -72,6 +72,51 @@ export default function Profile() {
     }
   };
 
+  const startEditingName = () => {
+    setTempName(profile.name);
+    setEditingName(true);
+  };
+
+  const cancelEditingName = () => {
+    setTempName('');
+    setEditingName(false);
+  };
+
+  const saveNameChange = async () => {
+    if (!tempName.trim()) {
+      Alert.alert('Fehler', 'Name darf nicht leer sein');
+      return;
+    }
+
+    setLoading(true);
+
+    try {
+      const response = await fetch(`${BACKEND_URL}/api/profile`, {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`,
+        },
+        body: JSON.stringify({ full_name: tempName.trim() })
+      });
+
+      if (response.ok) {
+        setProfile(prev => ({ ...prev, name: tempName.trim() }));
+        setEditingName(false);
+        setTempName('');
+        Alert.alert('Erfolg', 'Ihr Name wurde erfolgreich geändert!');
+      } else {
+        const errorData = await response.json();
+        Alert.alert('Fehler', errorData.detail || 'Name konnte nicht geändert werden');
+      }
+    } catch (error) {
+      console.error('Error updating name:', error);
+      Alert.alert('Fehler', 'Netzwerkfehler beim Ändern des Namens');
+    } finally {
+      setLoading(false);
+    }
+  };
+
   const saveProfile = async () => {
     if (!profile.name || !profile.phone) {
       Alert.alert('Fehler', 'Bitte geben Sie Name und Telefonnummer ein');
