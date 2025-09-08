@@ -530,6 +530,10 @@ export default function FunkgeraetScreen() {
   const deleteChannel = async (channelId: string) => {
     if (!token) return;
     
+    // Get the actual ID (could be _id from MongoDB)
+    const channel = channels.find(c => c.id === channelId || c._id === channelId);
+    const actualId = channel?.id || channel?._id || channelId;
+    
     Alert.alert(
       'Kanal löschen',
       'Möchten Sie diesen Kanal wirklich löschen?',
@@ -542,7 +546,7 @@ export default function FunkgeraetScreen() {
             setLoading(true);
             
             try {
-              const response = await fetch(`${BACKEND_URL}/api/admin/chat/groups/${channelId}`, {
+              const response = await fetch(`${BACKEND_URL}/api/admin/chat/groups/${actualId}`, {
                 method: 'DELETE',
                 headers: {
                   'Authorization': `Bearer ${token}`,
@@ -550,11 +554,12 @@ export default function FunkgeraetScreen() {
               });
 
               if (response.ok) {
-                setChannels(prev => prev.filter(c => c.id !== channelId));
+                setChannels(prev => prev.filter(c => c.id !== channelId && c._id !== channelId));
                 if (selectedGroup === channelId) {
                   setSelectedGroup(null);
                 }
                 Alert.alert('Erfolg', 'Kanal wurde gelöscht!');
+                await loadChannels(); // Reload channels to get fresh data
               } else {
                 Alert.alert('Fehler', 'Kanal konnte nicht gelöscht werden');
               }
