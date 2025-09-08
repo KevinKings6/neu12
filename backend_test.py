@@ -11,7 +11,7 @@ from datetime import datetime
 from typing import Dict, Any, List, Optional
 
 # Backend API base URL from frontend environment
-BASE_URL = "http://localhost:8001/api"
+BASE_URL = "https://ba41d31d-12ea-486d-ae78-9bc529c512b8.preview.emergentagent.com/api"
 
 class EmergencySOSAPITester:
     def __init__(self):
