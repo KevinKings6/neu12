@@ -748,38 +748,58 @@ export default function FunkgeraetScreen() {
     );
   };
 
-  const renderChannel = ({ item }: { item: ChatGroup }) => (
-    <View style={styles.channelRow}>
-      <TouchableOpacity
-        style={[
-          styles.channelButton,
-          selectedGroup === item.id && styles.selectedChannel
-        ]}
-        onPress={() => setSelectedGroup(item.id)}
-      >
-        <View style={styles.channelContent}>
-          <Text style={styles.channelName}>{item.name}</Text>
-          <Text style={styles.channelDescription}>{item.description}</Text>
-        </View>
-      </TouchableOpacity>
-      
-      <View style={styles.channelActions}>
+  const renderChannel = ({ item }: { item: ChatGroup }) => {
+    const channelId = item.id || item._id;
+    
+    console.log('RENDER CHANNEL DEBUG:', {
+      item,
+      channelId,
+      hasId: !!item.id,
+      hasUnderscoreId: !!item._id
+    });
+    
+    return (
+      <View style={styles.channelRow}>
         <TouchableOpacity
-          style={[styles.actionButton, styles.editButton]}
-          onPress={() => editChannel(item)}
+          style={[
+            styles.channelButton,
+            selectedGroup === channelId && styles.selectedChannel
+          ]}
+          onPress={() => {
+            console.log('CHANNEL SELECT:', channelId);
+            setSelectedGroup(channelId);
+          }}
         >
-          <Ionicons name="pencil" size={16} color="#fff" />
+          <View style={styles.channelContent}>
+            <Text style={styles.channelName}>{item.name}</Text>
+            <Text style={styles.channelDescription}>{item.description}</Text>
+          </View>
         </TouchableOpacity>
         
-        <TouchableOpacity
-          style={[styles.actionButton, styles.deleteButton]}
-          onPress={() => deleteChannel(item.id)}
-        >
-          <Ionicons name="trash" size={16} color="#fff" />
-        </TouchableOpacity>
+        <View style={styles.channelActions}>
+          <TouchableOpacity
+            style={[styles.actionButton, styles.editButton]}
+            onPress={() => {
+              console.log('EDIT CHANNEL PRESSED:', channelId);
+              editChannel(item);
+            }}
+          >
+            <Ionicons name="pencil" size={16} color="#fff" />
+          </TouchableOpacity>
+          
+          <TouchableOpacity
+            style={[styles.actionButton, styles.deleteButton]}
+            onPress={() => {
+              console.log('DELETE CHANNEL PRESSED:', channelId);
+              deleteChannel(channelId);
+            }}
+          >
+            <Ionicons name="trash" size={16} color="#fff" />
+          </TouchableOpacity>
+        </View>
       </View>
-    </View>
-  );
+    );
+  };
 
   return (
     <SafeAreaView style={styles.container}>
