@@ -153,7 +153,7 @@ class CriticalMemoryTester:
                             users = users_response.json()
                             existing_user = next((u for u in users if u.get("username") == user_data["username"]), None)
                             if existing_user:
-                                user_id = existing_user.get("id")
+                                user_id = existing_user.get("id") or existing_user.get("_id")
                                 if user_id:
                                     self.test_user_ids.append(user_id)
                                 self.log_test(
