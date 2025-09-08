@@ -75,6 +75,11 @@ export default function AdminDashboard() {
   const [selectedUser, setSelectedUser] = useState<User | null>(null);
   const [userGroups, setUserGroups] = useState<string[]>([]);
 
+  // SOS Management states
+  const [selectedSOS, setSelectedSOS] = useState<SOSAlert | null>(null);
+  const [sosDetailModalVisible, setSosDetailModalVisible] = useState(false);
+  const [sosLocation, setSosLocation] = useState<{latitude: number, longitude: number} | null>(null);
+
   // User role management
   const [roleModalVisible, setRoleModalVisible] = useState(false);
   const [selectedRole, setSelectedRole] = useState<'user' | 'team' | 'admin' | 'emergency'>('user');
