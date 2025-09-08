@@ -238,6 +238,103 @@ export default function FunkgeraetScreen() {
     }
   };
 
+  // MESSAGE MANAGEMENT FUNCTIONS
+  const editMessage = (message: ChatMessage) => {
+    if (message.user_id !== user?.id) {
+      Alert.alert('Fehler', 'Sie können nur Ihre eigenen Nachrichten bearbeiten');
+      return;
+    }
+    
+    setEditingMessage(message);
+    setEditMessageText(message.message);
+    setEditMessageModalVisible(true);
+  };
+
+  const saveEditedMessage = async () => {
+    if (!editingMessage || !editMessageText.trim() || !token) {
+      Alert.alert('Fehler', 'Bitte geben Sie eine Nachricht ein');
+      return;
+    }
+
+    setLoading(true);
+    
+    try {
+      const response = await fetch(`${BACKEND_URL}/api/admin/chat/${editingMessage.id}`, {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`,
+        },
+        body: JSON.stringify({ message: editMessageText })
+      });
+
+      if (response.ok) {
+        // Update local messages
+        setMessages(prev => prev.map(msg => 
+          msg.id === editingMessage.id 
+            ? { ...msg, message: editMessageText }
+            : msg
+        ));
+        
+        setEditMessageModalVisible(false);
+        setEditingMessage(null);
+        setEditMessageText('');
+        Alert.alert('Erfolg', 'Nachricht wurde aktualisiert!');
+      } else {
+        Alert.alert('Fehler', 'Nachricht konnte nicht aktualisiert werden');
+      }
+    } catch (error) {
+      console.error('Error editing message:', error);
+      Alert.alert('Fehler', 'Fehler beim Bearbeiten der Nachricht');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const deleteMessage = async (messageId: string, userId: string) => {
+    if (userId !== user?.id) {
+      Alert.alert('Fehler', 'Sie können nur Ihre eigenen Nachrichten löschen');
+      return;
+    }
+
+    Alert.alert(
+      'Nachricht löschen',
+      'Möchten Sie diese Nachricht wirklich löschen?',
+      [
+        { text: 'Abbrechen', style: 'cancel' },
+        {
+          text: 'Löschen',
+          style: 'destructive',
+          onPress: async () => {
+            setLoading(true);
+            
+            try {
+              const response = await fetch(`${BACKEND_URL}/api/admin/chat/${messageId}`, {
+                method: 'DELETE',
+                headers: {
+                  'Authorization': `Bearer ${token}`,
+                },
+              });
+
+              if (response.ok) {
+                // Remove from local messages
+                setMessages(prev => prev.filter(msg => msg.id !== messageId));
+                Alert.alert('Erfolg', 'Nachricht wurde gelöscht!');
+              } else {
+                Alert.alert('Fehler', 'Nachricht konnte nicht gelöscht werden');
+              }
+            } catch (error) {
+              console.error('Error deleting message:', error);
+              Alert.alert('Fehler', 'Fehler beim Löschen der Nachricht');
+            } finally {
+              setLoading(false);
+            }
+          }
+        }
+      ]
+    );
+  };
+
   // SEND MESSAGE FUNCTIONS
   const sendMessage = async () => {
     if (!newMessage.trim() || !token) {
