@@ -123,35 +123,60 @@ export default function AdminChat() {
   };
 
   const loadMessages = async () => {
-    // Simulation von Nachrichten für Demo
-    const demoMessages: ChatMessage[] = [
-      {
-        id: '1',
-        user_id: user?.id || '1',
-        username: 'Einsatzleiter Schmidt',
-        message: 'Alle Einheiten, Lage-Update erforderlich',
-        chat_type: 'voice',
-        group_id: selectedGroup,
-        is_voice_message: false,
-        created_at: new Date(Date.now() - 300000).toISOString()
-      },
-      {
-        id: '2',
-        user_id: '2',
-        username: 'RTW-1',
-        message: 'Sprach-Nachricht',
-        chat_type: 'voice',
-        group_id: selectedGroup,
-        is_voice_message: true,
-        created_at: new Date(Date.now() - 120000).toISOString()
+    if (!token) return;
+    
+    try {
+      const queryParams = new URLSearchParams({
+        chat_type: 'admin',
+        ...(selectedGroup && { group_id: selectedGroup })
+      });
+      
+      const response = await fetch(`${BACKEND_URL}/api/admin/chat?${queryParams}`, {
+        headers: {
+          'Authorization': `Bearer ${token}`,
+        },
+      });
+
+      if (response.ok) {
+        const messagesData = await response.json();
+        setMessages(messagesData);
+      } else {
+        console.error('Failed to load messages:', response.status);
+        // Fallback zu Demo-Nachrichten
+        const demoMessages: ChatMessage[] = [
+          {
+            id: '1',
+            user_id: user?.id || '1',
+            username: 'Einsatzleiter Schmidt',
+            message: 'Alle Einheiten, Lage-Update erforderlich',
+            chat_type: 'admin',
+            group_id: selectedGroup,
+            is_voice_message: false,
+            created_at: new Date(Date.now() - 300000).toISOString()
+          },
+          {
+            id: '2',
+            user_id: '2',
+            username: 'RTW-1',
+            message: 'Sprach-Nachricht',
+            chat_type: 'admin',
+            group_id: selectedGroup,
+            is_voice_message: true,
+            created_at: new Date(Date.now() - 120000).toISOString()
+          }
+        ];
+        
+        const filteredMessages = selectedGroup 
+          ? demoMessages.filter(msg => msg.group_id === selectedGroup)
+          : demoMessages;
+        
+        setMessages(filteredMessages);
       }
-    ];
-    
-    const filteredMessages = selectedGroup 
-      ? demoMessages.filter(msg => msg.group_id === selectedGroup)
-      : demoMessages;
-    
-    setMessages(filteredMessages);
+    } catch (error) {
+      console.error('Error loading messages:', error);
+      // Fallback zu Demo-Nachrichten bei Fehler
+      setMessages([]);
+    }
   };
 
   const sendMessage = async () => {
