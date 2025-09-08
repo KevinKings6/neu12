@@ -378,7 +378,9 @@ export default function AdminChat() {
     }
   };
 
-  const deleteChannel = (channelId: string) => {
+  const deleteChannel = async (channelId: string) => {
+    if (!token) return;
+    
     Alert.alert(
       'Kanal löschen',
       'Möchten Sie diesen Kanal wirklich löschen?',
@@ -387,12 +389,32 @@ export default function AdminChat() {
         {
           text: 'Löschen',
           style: 'destructive',
-          onPress: () => {
-            setChannels(prev => prev.filter(c => c.id !== channelId));
-            if (selectedGroup === channelId) {
-              setSelectedGroup(null);
+          onPress: async () => {
+            setLoading(true);
+            
+            try {
+              const response = await fetch(`${BACKEND_URL}/api/admin/chat/groups/${channelId}`, {
+                method: 'DELETE',
+                headers: {
+                  'Authorization': `Bearer ${token}`,
+                },
+              });
+
+              if (response.ok) {
+                setChannels(prev => prev.filter(c => c.id !== channelId));
+                if (selectedGroup === channelId) {
+                  setSelectedGroup(null);
+                }
+                Alert.alert('Erfolg', 'Kanal wurde gelöscht!');
+              } else {
+                Alert.alert('Fehler', 'Kanal konnte nicht gelöscht werden');
+              }
+            } catch (error) {
+              console.error('Error deleting channel:', error);
+              Alert.alert('Fehler', 'Fehler beim Löschen des Kanals');
+            } finally {
+              setLoading(false);
             }
-            Alert.alert('Erfolg', 'Kanal wurde gelöscht!');
           }
         }
       ]
