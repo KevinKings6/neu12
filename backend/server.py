@@ -207,7 +207,7 @@ class ChatGroup(BaseModel):
     is_active: bool = True
     created_at: datetime = Field(default_factory=datetime.utcnow)
 
-    model_config = {"populate_by_name": True}
+    model_config = {"populate_by_name": True, "by_alias": True}
 
 
 class ChatGroupCreate(BaseModel):
