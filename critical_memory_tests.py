@@ -559,7 +559,7 @@ class CriticalMemoryTester:
             
             if response.status_code == 200:
                 created_user = response.json()
-                integration_user_id = created_user.get("id")
+                integration_user_id = created_user.get("id") or created_user.get("_id")
                 
                 # Step 2: Login as the integration user
                 login_response = self.session.post(
