@@ -877,47 +877,6 @@ def hash_password(password: str) -> str:
     return pwd_context.hash(password)
 
 
-# Test endpoint for direct role update
-@api_router.post("/admin/test-user-role")
-async def test_user_role_update():
-    """Test endpoint to create test users with different roles"""
-    try:
-        # Create test users with different roles
-        test_users = [
-            {
-                "username": "testuser1",
-                "email": "user@test.com", 
-                "full_name": "Test User",
-                "password": "test123",
-                "role": "user",
-                "is_active": True,
-                "created_at": datetime.utcnow()
-            },
-            {
-                "username": "testteam1", 
-                "email": "team@test.com",
-                "full_name": "Test Team Member",
-                "password": "test123",
-                "role": "team",
-                "is_active": True,
-                "created_at": datetime.utcnow()
-            }
-        ]
-        
-        for user_data in test_users:
-            # Check if user already exists
-            existing_user = await db.users.find_one({"email": user_data["email"]})
-            if not existing_user:
-                user_data["hashed_password"] = get_password_hash(user_data["password"])
-                del user_data["password"]
-                await db.users.insert_one(user_data)
-        
-        return {"message": "Test users created with different roles"}
-    except Exception as e:
-        print(f"Error creating test users: {e}")
-        return {"error": str(e)}
-
-
 if __name__ == "__main__":
     import uvicorn
     uvicorn.run(app, host="0.0.0.0", port=8000)
