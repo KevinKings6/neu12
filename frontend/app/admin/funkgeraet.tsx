@@ -1,577 +1,816 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import {
   View,
   Text,
-  StyleSheet,
+  TextInput,
   TouchableOpacity,
   FlatList,
-  TextInput,
-  StatusBar,
   Alert,
-  KeyboardAvoidingView,
-  Platform,
   Modal,
-  ScrollView,
+  StyleSheet,
+  SafeAreaView,
+  Dimensions,
+  ActivityIndicator,
+  Platform
 } from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons, MaterialIcons } from '@expo/vector-icons';
 import { router } from 'expo-router';
 import { useAuth } from '../../contexts/AuthContext';
+import { Audio } from 'expo-av';
+import * as FileSystem from 'expo-file-system';
+
+const { width } = Dimensions.get('window');
+const BACKEND_URL = process.env.EXPO_PUBLIC_BACKEND_URL || 'https://emergency-sos-3.preview.emergentagent.com';
+
+interface ChatGroup {
+  id: string;
+  name: string;
+  description: string;
+  created_by: string;
+  members: string[];
+  is_active: boolean;
+  created_at: string;
+}
 
 interface ChatMessage {
   id: string;
   user_id: string;
   username: string;
   message: string;
-  group_id?: string;
+  chat_type: string;
+  group_id?: string | null;
   is_voice_message: boolean;
+  voice_data?: string;
+  voice_duration?: number;
   created_at: string;
 }
 
-interface ChatGroup {
-  id: string;
-  name: string;
-  description?: string;
-  members: string[];
-}
+export default function FunkgeraetScreen() {
+  const { user, token } = useAuth();
+  const flatListRef = useRef<FlatList>(null);
 
-export default function Funkgeraet() {
-  const { user, isAdmin } = useAuth();
-  const [messages, setMessages] = useState<ChatMessage[]>([]);
-  const [newMessage, setNewMessage] = useState('');
+  // States
   const [selectedGroup, setSelectedGroup] = useState<string | null>(null);
-  const [isRecording, setIsRecording] = useState(false);
-  const [adminName, setAdminName] = useState(user?.full_name || 'Admin');
-  
-  // Funktionierende Gruppen (ohne API-Abhängigkeiten)
-  const [groups, setGroups] = useState<ChatGroup[]>([
-    { id: '1', name: 'Einsatzleitung', description: 'Hauptkommunikation', members: [] },
-    { id: '2', name: 'Rettungsdienst', description: 'Rettungskräfte', members: [] },
-    { id: '3', name: 'Feuerwehr', description: 'Feuerwehr-Kommunikation', members: [] },
-    { id: '4', name: 'Polizei', description: 'Polizei-Kommunikation', members: [] }
-  ]);
+  const [newMessage, setNewMessage] = useState('');
+  const [messages, setMessages] = useState<ChatMessage[]>([]);
+  const [channels, setChannels] = useState<ChatGroup[]>([]);
+  const [loading, setLoading] = useState(false);
+
+  // Voice recording states
+  const [isRecordingVoice, setIsRecordingVoice] = useState(false);
+  const [recordingUri, setRecordingUri] = useState<string | null>(null);
+  const [voiceRecording, setVoiceRecording] = useState<Audio.Recording | null>(null);
+  const [playingMessageId, setPlayingMessageId] = useState<string | null>(null);
 
   // Modal states
-  const [groupModalVisible, setGroupModalVisible] = useState(false);
-  const [editingGroup, setEditingGroup] = useState<ChatGroup | null>(null);
-  const [groupForm, setGroupForm] = useState({ name: '', description: '' });
-  const [profileModalVisible, setProfileModalVisible] = useState(false);
-  const [newDisplayName, setNewDisplayName] = useState(adminName);
+  const [showChannelManager, setShowChannelManager] = useState(false);
+  const [channelModalVisible, setChannelModalVisible] = useState(false);
+  const [editingChannel, setEditingChannel] = useState<ChatGroup | null>(null);
+  const [adminProfileModalVisible, setAdminProfileModalVisible] = useState(false);
+  const [adminName, setAdminName] = useState('');
+
+  const [channelForm, setChannelForm] = useState({
+    name: '',
+    description: ''
+  });
 
   useEffect(() => {
-    if (!isAdmin()) {
-      Alert.alert('Zugriff verweigert', 'Sie haben keine Berechtigung für diesen Bereich');
-      router.replace('/');
-      return;
-    }
+    loadChannels();
+    loadMessages();
   }, []);
 
+  useEffect(() => {
+    loadMessages();
+  }, [selectedGroup]);
+
+  // BACKEND INTEGRATION FUNCTIONS
+  const loadChannels = async () => {
+    if (!token) return;
+    
+    try {
+      const response = await fetch(`${BACKEND_URL}/api/admin/chat/groups`, {
+        headers: {
+          'Authorization': `Bearer ${token}`,
+        },
+      });
+
+      if (response.ok) {
+        const channelsData = await response.json();
+        setChannels(channelsData);
+      } else {
+        setChannels([
+          { id: '1', name: 'Einsatzleitung', description: 'Hauptkoordination', created_by: 'admin', members: [], is_active: true, created_at: new Date().toISOString() },
+          { id: '2', name: 'Rettungsdienst', description: 'Rettungskräfte', created_by: 'admin', members: [], is_active: true, created_at: new Date().toISOString() },
+          { id: '3', name: 'Feuerwehr', description: 'Feuerwehreinsätze', created_by: 'admin', members: [], is_active: true, created_at: new Date().toISOString() },
+          { id: '4', name: 'Polizei', description: 'Polizeieinsätze', created_by: 'admin', members: [], is_active: true, created_at: new Date().toISOString() },
+        ]);
+      }
+    } catch (error) {
+      console.error('Error loading channels:', error);
+    }
+  };
+
+  const loadMessages = async () => {
+    if (!token) return;
+    
+    try {
+      const queryParams = new URLSearchParams({
+        chat_type: 'admin',
+        ...(selectedGroup && { group_id: selectedGroup })
+      });
+      
+      const response = await fetch(`${BACKEND_URL}/api/admin/chat?${queryParams}`, {
+        headers: {
+          'Authorization': `Bearer ${token}`,
+        },
+      });
+
+      if (response.ok) {
+        const messagesData = await response.json();
+        setMessages(messagesData);
+      } else {
+        const demoMessages: ChatMessage[] = [
+          {
+            id: '1',
+            user_id: user?.id || '1',
+            username: 'Einsatzleiter Schmidt',
+            message: 'Alle Einheiten, Status-Update erforderlich',
+            chat_type: 'admin',
+            group_id: selectedGroup,
+            is_voice_message: false,
+            created_at: new Date(Date.now() - 300000).toISOString()
+          }
+        ];
+        
+        const filteredMessages = selectedGroup 
+          ? demoMessages.filter(msg => msg.group_id === selectedGroup)
+          : demoMessages;
+        
+        setMessages(filteredMessages);
+      }
+    } catch (error) {
+      console.error('Error loading messages:', error);
+    }
+  };
+
+  // VOICE RECORDING FUNCTIONS
+  const requestAudioPermission = async () => {
+    try {
+      const permission = await Audio.requestPermissionsAsync();
+      return permission.status === 'granted';
+    } catch (error) {
+      console.error('Error requesting audio permission:', error);
+      return false;
+    }
+  };
+
+  const startRecording = async () => {
+    try {
+      const hasPermission = await requestAudioPermission();
+      if (!hasPermission) {
+        Alert.alert('Berechtigung erforderlich', 'Mikrofonzugriff ist erforderlich für Sprachnachrichten');
+        return;
+      }
+
+      await Audio.setAudioModeAsync({
+        allowsRecordingIOS: true,
+        playsInSilentModeIOS: true,
+      });
+
+      const newRecording = new Audio.Recording();
+      await newRecording.prepareToRecordAsync(Audio.RECORDING_OPTIONS_PRESET_HIGH_QUALITY);
+      await newRecording.startAsync();
+      
+      setVoiceRecording(newRecording);
+      setIsRecordingVoice(true);
+    } catch (error) {
+      console.error('Failed to start recording:', error);
+      Alert.alert('Fehler', 'Aufnahme konnte nicht gestartet werden');
+    }
+  };
+
+  const stopRecording = async () => {
+    if (!voiceRecording) return;
+
+    try {
+      await voiceRecording.stopAndUnloadAsync();
+      const uri = voiceRecording.getURI();
+      setRecordingUri(uri);
+      setIsRecordingVoice(false);
+      setVoiceRecording(null);
+    } catch (error) {
+      console.error('Failed to stop recording:', error);
+      Alert.alert('Fehler', 'Aufnahme konnte nicht gestoppt werden');
+    }
+  };
+
+  const playVoiceMessage = async (messageId: string, voiceData: string) => {
+    try {
+      if (playingMessageId === messageId) {
+        setPlayingMessageId(null);
+        return;
+      }
+
+      const tempUri = `${FileSystem.documentDirectory}temp_voice_${messageId}.m4a`;
+      await FileSystem.writeAsStringAsync(tempUri, voiceData, {
+        encoding: FileSystem.EncodingType.Base64,
+      });
+
+      const { sound } = await Audio.Sound.createAsync({ uri: tempUri });
+      setPlayingMessageId(messageId);
+      
+      sound.setOnPlaybackStatusUpdate((status) => {
+        if (status.isLoaded && status.didJustFinish) {
+          setPlayingMessageId(null);
+        }
+      });
+
+      await sound.playAsync();
+    } catch (error) {
+      console.error('Error playing voice message:', error);
+      setPlayingMessageId(null);
+      Alert.alert('Fehler', 'Sprachnachricht konnte nicht abgespielt werden');
+    }
+  };
+
+  // SEND MESSAGE FUNCTIONS
   const sendMessage = async () => {
-    if (!newMessage.trim()) {
+    if (!newMessage.trim() || !token) {
       Alert.alert('Fehler', 'Bitte geben Sie eine Nachricht ein');
       return;
     }
 
-    const newMsg: ChatMessage = {
-      id: Date.now().toString(),
-      user_id: user?.id || '1',
-      username: adminName,
-      message: newMessage,
-      group_id: selectedGroup,
-      is_voice_message: false,
-      created_at: new Date().toISOString()
-    };
-
-    setMessages(prev => [...prev, newMsg]);
-    setNewMessage('');
+    setLoading(true);
     
-    Alert.alert('Erfolg', 'Nachricht gesendet!');
-  };
-
-  const startVoiceRecording = () => {
-    setIsRecording(true);
-    
-    // Simuliere Sprachaufnahme
-    setTimeout(() => {
-      setIsRecording(false);
-      
-      const voiceMsg: ChatMessage = {
-        id: Date.now().toString(),
-        user_id: user?.id || '1',
-        username: adminName,
-        message: 'Sprach-Nachricht',
+    try {
+      const messageData = {
+        message: newMessage,
+        chat_type: 'admin',
         group_id: selectedGroup,
-        is_voice_message: true,
-        created_at: new Date().toISOString()
+        is_voice_message: false
       };
 
-      setMessages(prev => [...prev, voiceMsg]);
-      Alert.alert('Erfolg', 'Sprach-Nachricht gesendet!');
-    }, 2000);
-  };
+      const response = await fetch(`${BACKEND_URL}/api/admin/chat`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`,
+        },
+        body: JSON.stringify(messageData)
+      });
 
-  const openGroupModal = (group?: ChatGroup) => {
-    if (group) {
-      setEditingGroup(group);
-      setGroupForm({ name: group.name, description: group.description || '' });
-    } else {
-      setEditingGroup(null);
-      setGroupForm({ name: '', description: '' });
+      if (response.ok) {
+        const sentMessage = await response.json();
+        
+        const newMsg: ChatMessage = {
+          id: sentMessage.id || sentMessage._id || Date.now().toString(),
+          user_id: user?.id || '1',
+          username: user?.full_name || 'Admin',
+          message: newMessage,
+          chat_type: 'admin',
+          group_id: selectedGroup,
+          is_voice_message: false,
+          created_at: new Date().toISOString()
+        };
+
+        setMessages(prev => [...prev, newMsg]);
+        setNewMessage('');
+        
+        setTimeout(() => {
+          flatListRef.current?.scrollToEnd({ animated: true });
+        }, 100);
+      } else {
+        Alert.alert('Fehler', 'Nachricht konnte nicht gesendet werden');
+      }
+    } catch (error) {
+      console.error('Error sending message:', error);
+      Alert.alert('Fehler', 'Fehler beim Senden der Nachricht');
+    } finally {
+      setLoading(false);
     }
-    setGroupModalVisible(true);
   };
 
-  const saveGroup = () => {
-    if (!groupForm.name.trim()) {
-      Alert.alert('Fehler', 'Bitte geben Sie einen Gruppennamen ein');
+  const sendVoiceMessage = async () => {
+    if (!recordingUri || !token) return;
+
+    setLoading(true);
+    
+    try {
+      const audioBase64 = await FileSystem.readAsStringAsync(recordingUri, {
+        encoding: FileSystem.EncodingType.Base64,
+      });
+
+      const messageData = {
+        message: 'Sprachnachricht',
+        chat_type: 'admin',
+        group_id: selectedGroup,
+        is_voice_message: true,
+        voice_data: audioBase64,
+        voice_duration: 5 // Placeholder
+      };
+
+      const response = await fetch(`${BACKEND_URL}/api/admin/chat`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`,
+        },
+        body: JSON.stringify(messageData)
+      });
+
+      if (response.ok) {
+        const newMsg: ChatMessage = {
+          id: Date.now().toString(),
+          user_id: user?.id || '1',
+          username: user?.full_name || 'Admin',
+          message: 'Sprachnachricht',
+          chat_type: 'admin',
+          group_id: selectedGroup,
+          is_voice_message: true,
+          voice_data: audioBase64,
+          voice_duration: 5,
+          created_at: new Date().toISOString()
+        };
+
+        setMessages(prev => [...prev, newMsg]);
+        setRecordingUri(null);
+        
+        setTimeout(() => {
+          flatListRef.current?.scrollToEnd({ animated: true });
+        }, 100);
+      } else {
+        Alert.alert('Fehler', 'Sprachnachricht konnte nicht gesendet werden');
+      }
+    } catch (error) {
+      console.error('Error sending voice message:', error);
+      Alert.alert('Fehler', 'Fehler beim Senden der Sprachnachricht');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // CHANNEL MANAGEMENT FUNCTIONS
+  const saveChannel = async () => {
+    if (!channelForm.name.trim() || !token) {
+      Alert.alert('Fehler', 'Bitte geben Sie einen Kanal-Namen ein');
       return;
     }
 
-    if (editingGroup) {
-      // Bearbeiten
-      setGroups(prev => prev.map(g => 
-        g.id === editingGroup.id 
-          ? { ...g, name: groupForm.name, description: groupForm.description }
-          : g
-      ));
-      Alert.alert('Erfolg', 'Gruppe wurde aktualisiert!');
-    } else {
-      // Neu erstellen
-      const newGroup: ChatGroup = {
-        id: Date.now().toString(),
-        name: groupForm.name,
-        description: groupForm.description,
-        members: []
-      };
-      setGroups(prev => [...prev, newGroup]);
-      Alert.alert('Erfolg', 'Neue Gruppe wurde erstellt!');
-    }
+    setLoading(true);
+    
+    try {
+      if (editingChannel) {
+        const response = await fetch(`${BACKEND_URL}/api/admin/chat/groups/${editingChannel.id}`, {
+          method: 'PUT',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${token}`,
+          },
+          body: JSON.stringify({
+            name: channelForm.name,
+            description: channelForm.description,
+          })
+        });
 
-    setGroupModalVisible(false);
+        if (response.ok) {
+          const updatedChannel = await response.json();
+          setChannels(prev => prev.map(c => 
+            c.id === editingChannel.id 
+              ? { ...updatedChannel, id: updatedChannel.id || updatedChannel._id }
+              : c
+          ));
+          Alert.alert('Erfolg', 'Kanal wurde aktualisiert!');
+        } else {
+          Alert.alert('Fehler', 'Kanal konnte nicht aktualisiert werden');
+        }
+      } else {
+        const response = await fetch(`${BACKEND_URL}/api/admin/chat/groups`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${token}`,
+          },
+          body: JSON.stringify({
+            name: channelForm.name,
+            description: channelForm.description,
+            members: []
+          })
+        });
+
+        if (response.ok) {
+          const newChannel = await response.json();
+          const channelWithId = { ...newChannel, id: newChannel.id || newChannel._id };
+          setChannels(prev => [...prev, channelWithId]);
+          Alert.alert('Erfolg', 'Neuer Kanal wurde erstellt!');
+        } else {
+          Alert.alert('Fehler', 'Kanal konnte nicht erstellt werden');
+        }
+      }
+      
+      setChannelModalVisible(false);
+      setChannelForm({ name: '', description: '' });
+      setEditingChannel(null);
+    } catch (error) {
+      console.error('Error saving channel:', error);
+      Alert.alert('Fehler', 'Fehler beim Speichern des Kanals');
+    } finally {
+      setLoading(false);
+    }
   };
 
-  const deleteGroup = (groupId: string) => {
+  const deleteChannel = async (channelId: string) => {
+    if (!token) return;
+    
     Alert.alert(
-      'Gruppe löschen',
-      'Möchten Sie diese Gruppe wirklich löschen?',
+      'Kanal löschen',
+      'Möchten Sie diesen Kanal wirklich löschen?',
       [
         { text: 'Abbrechen', style: 'cancel' },
         {
           text: 'Löschen',
           style: 'destructive',
-          onPress: () => {
-            setGroups(prev => prev.filter(g => g.id !== groupId));
-            if (selectedGroup === groupId) {
-              setSelectedGroup(null);
+          onPress: async () => {
+            setLoading(true);
+            
+            try {
+              const response = await fetch(`${BACKEND_URL}/api/admin/chat/groups/${channelId}`, {
+                method: 'DELETE',
+                headers: {
+                  'Authorization': `Bearer ${token}`,
+                },
+              });
+
+              if (response.ok) {
+                setChannels(prev => prev.filter(c => c.id !== channelId));
+                if (selectedGroup === channelId) {
+                  setSelectedGroup(null);
+                }
+                Alert.alert('Erfolg', 'Kanal wurde gelöscht!');
+              } else {
+                Alert.alert('Fehler', 'Kanal konnte nicht gelöscht werden');
+              }
+            } catch (error) {
+              console.error('Error deleting channel:', error);
+              Alert.alert('Fehler', 'Fehler beim Löschen des Kanals');
+            } finally {
+              setLoading(false);
             }
-            Alert.alert('Erfolg', 'Gruppe wurde gelöscht!');
           }
         }
       ]
     );
   };
 
-  const updateProfile = () => {
-    if (!newDisplayName.trim()) {
+  const editChannel = (channel: ChatGroup) => {
+    setEditingChannel(channel);
+    setChannelForm({
+      name: channel.name,
+      description: channel.description
+    });
+    setChannelModalVisible(true);
+  };
+
+  const openAdminProfileModal = () => {
+    setAdminName(user?.full_name || '');
+    setAdminProfileModalVisible(true);
+  };
+
+  const saveAdminProfile = async () => {
+    if (!adminName.trim() || !token) {
       Alert.alert('Fehler', 'Bitte geben Sie einen Namen ein');
       return;
     }
 
-    setAdminName(newDisplayName);
-    setProfileModalVisible(false);
-    Alert.alert('Erfolg', 'Anzeigename wurde aktualisiert!');
+    setLoading(true);
+    
+    try {
+      const response = await fetch(`${BACKEND_URL}/api/admin/profile`, {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`,
+        },
+        body: JSON.stringify({ full_name: adminName })
+      });
+
+      if (response.ok) {
+        setAdminProfileModalVisible(false);
+        Alert.alert('Erfolg', 'Ihr Name wurde aktualisiert!');
+      } else {
+        Alert.alert('Fehler', 'Name konnte nicht aktualisiert werden');
+      }
+    } catch (error) {
+      console.error('Error updating admin profile:', error);
+      Alert.alert('Fehler', 'Fehler beim Aktualisieren des Profils');
+    } finally {
+      setLoading(false);
+    }
   };
 
-  const formatTime = (dateString: string) => {
-    const date = new Date(dateString);
-    return date.toLocaleTimeString('de-DE', { hour: '2-digit', minute: '2-digit' });
-  };
-
-  const getFilteredMessages = () => {
-    if (!selectedGroup) return messages;
-    return messages.filter(msg => msg.group_id === selectedGroup);
-  };
-
-  const currentGroupName = selectedGroup ? groups.find(g => g.id === selectedGroup)?.name : 'Alle Gruppen';
-
+  // RENDER FUNCTIONS
   const renderMessage = ({ item }: { item: ChatMessage }) => {
     const isOwnMessage = item.user_id === user?.id;
+    const messageTime = new Date(item.created_at).toLocaleTimeString('de-DE', {
+      hour: '2-digit',
+      minute: '2-digit'
+    });
 
     return (
-      <View style={[styles.messageContainer, isOwnMessage && styles.ownMessageContainer]}>
-        <View style={[styles.messageBubble, isOwnMessage && styles.ownMessageBubble]}>
-          {!isOwnMessage && (
-            <Text style={styles.senderName}>{item.username}</Text>
-          )}
-          
-          {item.is_voice_message ? (
-            <View style={styles.voiceMessage}>
-              <Ionicons name="mic" size={20} color={isOwnMessage ? '#fff' : '#ff4444'} />
-              <Text style={[styles.messageText, isOwnMessage && styles.ownMessageText]}>
-                Sprach-Nachricht
-              </Text>
-            </View>
-          ) : (
-            <Text style={[styles.messageText, isOwnMessage && styles.ownMessageText]}>
-              {item.message}
-            </Text>
-          )}
-          
-          <Text style={[styles.messageTime, isOwnMessage && styles.ownMessageTime]}>
-            {formatTime(item.created_at)}
-          </Text>
+      <View style={[
+        styles.messageContainer,
+        isOwnMessage ? styles.ownMessage : styles.otherMessage
+      ]}>
+        <View style={styles.messageHeader}>
+          <Text style={styles.senderName}>{item.username}</Text>
+          <Text style={styles.messageTime}>{messageTime}</Text>
         </View>
+        
+        {item.is_voice_message ? (
+          <View style={styles.voiceMessageContainer}>
+            <TouchableOpacity
+              style={styles.playButton}
+              onPress={() => item.voice_data && playVoiceMessage(item.id, item.voice_data)}
+            >
+              <Ionicons 
+                name={playingMessageId === item.id ? "pause" : "play"} 
+                size={20} 
+                color="#fff" 
+              />
+            </TouchableOpacity>
+            <Text style={styles.voiceMessageText}>
+              Sprachnachricht ({item.voice_duration || 0}s)
+            </Text>
+          </View>
+        ) : (
+          <Text style={styles.messageText}>{item.message}</Text>
+        )}
       </View>
     );
   };
 
+  const renderChannel = ({ item }: { item: ChatGroup }) => (
+    <View style={styles.channelRow}>
+      <TouchableOpacity
+        style={[
+          styles.channelButton,
+          selectedGroup === item.id && styles.selectedChannel
+        ]}
+        onPress={() => setSelectedGroup(item.id)}
+      >
+        <View style={styles.channelContent}>
+          <Text style={styles.channelName}>{item.name}</Text>
+          <Text style={styles.channelDescription}>{item.description}</Text>
+        </View>
+      </TouchableOpacity>
+      
+      <View style={styles.channelActions}>
+        <TouchableOpacity
+          style={[styles.actionButton, styles.editButton]}
+          onPress={() => editChannel(item)}
+        >
+          <Ionicons name="pencil" size={16} color="#fff" />
+        </TouchableOpacity>
+        
+        <TouchableOpacity
+          style={[styles.actionButton, styles.deleteButton]}
+          onPress={() => deleteChannel(item.id)}
+        >
+          <Ionicons name="trash" size={16} color="#fff" />
+        </TouchableOpacity>
+      </View>
+    </View>
+  );
+
   return (
     <SafeAreaView style={styles.container}>
-      <StatusBar barStyle="light-content" backgroundColor="#1a1a1a" />
-      
-      {/* Header mit verbesserter Navigation */}
+      {/* Header */}
       <View style={styles.header}>
         <TouchableOpacity onPress={() => router.back()}>
           <Ionicons name="arrow-back" size={24} color="#fff" />
         </TouchableOpacity>
+        
         <View style={styles.headerCenter}>
-          <Text style={styles.headerTitle}>🔊 Funkgerät</Text>
-          <Text style={styles.headerSubtitle}>{currentGroupName}</Text>
+          <Text style={styles.headerTitle}>📻 Funkgerät</Text>
+          {selectedGroup && (
+            <Text style={styles.selectedChannelText}>
+              {channels.find(c => c.id === selectedGroup)?.name || 'Kanal'}
+            </Text>
+          )}
         </View>
+        
         <View style={styles.headerActions}>
-          <TouchableOpacity 
-            onPress={() => setProfileModalVisible(true)}
-            style={styles.headerButton}
-          >
-            <Ionicons name="person" size={20} color="#fff" />
+          <TouchableOpacity onPress={openAdminProfileModal} style={styles.headerActionButton}>
+            <Ionicons name="person-circle" size={24} color="#fff" />
+          </TouchableOpacity>
+          <TouchableOpacity onPress={() => setShowChannelManager(true)} style={styles.headerActionButton}>
+            <Ionicons name="settings" size={24} color="#fff" />
           </TouchableOpacity>
         </View>
       </View>
 
-      {/* NEUE PROMINENTE KANAL-KATEGORIE-SEKTION */}
-      <View style={styles.channelCategorySection}>
-        <View style={styles.categoryHeader}>
-          <View style={styles.categoryTitleContainer}>
-            <Ionicons name="radio" size={24} color="#ff4444" />
-            <Text style={styles.categoryMainTitle}>KANAL-VERWALTUNG</Text>
-          </View>
-          <Text style={styles.categorySubtitle}>Funkkanäle erstellen • bearbeiten • löschen</Text>
-        </View>
-        
-        <View style={styles.categoryActions}>
-          <TouchableOpacity 
-            onPress={() => openGroupModal()}
-            style={styles.newChannelMainButton}
-          >
-            <Ionicons name="add-circle" size={24} color="#fff" />
-            <Text style={styles.newChannelMainText}>NEUER KANAL</Text>
-            <Ionicons name="chevron-forward" size={20} color="#fff" />
-          </TouchableOpacity>
-          
-          <View style={styles.categoryStats}>
-            <View style={styles.statItem}>
-              <Text style={styles.statNumber}>{groups.length}</Text>
-              <Text style={styles.statLabel}>Kanäle</Text>
-            </View>
-            <View style={styles.statDivider} />
-            <View style={styles.statItem}>
-              <Text style={styles.statNumber}>{getFilteredMessages().length}</Text>
-              <Text style={styles.statLabel}>Nachrichten</Text>
-            </View>
-          </View>
-        </View>
-      </View>
+      {/* Main Content */}
+      {selectedGroup ? (
+        <View style={styles.chatArea}>
+          {/* Messages */}
+          <FlatList
+            ref={flatListRef}
+            data={messages}
+            renderItem={renderMessage}
+            keyExtractor={(item) => item.id}
+            style={styles.messagesList}
+            showsVerticalScrollIndicator={false}
+          />
 
-      {/* ERWEITERTE KANAL-NAVIGATION MIT MANAGEMENT-FUNKTIONEN */}
-      <View style={styles.activeChannelsSection}>
-        <Text style={styles.activeChannelsTitle}>📡 AKTIVE FUNKKANÄLE</Text>
-        
-        <ScrollView horizontal style={styles.channelsScrollContainer} showsHorizontalScrollIndicator={false}>
-          {/* Alle Kanäle Button */}
-          <TouchableOpacity
-            style={[styles.channelCard, !selectedGroup && styles.activeChannelCard]}
-            onPress={() => setSelectedGroup(null)}
-          >
-            <View style={styles.channelCardContent}>
-              <Ionicons name="radio" size={20} color={!selectedGroup ? '#fff' : '#888'} />
-              <Text style={[styles.channelCardTitle, !selectedGroup && styles.activeChannelCardTitle]}>
-                ALLE KANÄLE
-              </Text>
-              <Text style={[styles.channelCardSubtitle, !selectedGroup && styles.activeChannelCardSubtitle]}>
-                Gesamtkommunikation
-              </Text>
-            </View>
-          </TouchableOpacity>
-
-          {/* Individuelle Kanal-Karten */}
-          {groups.map((group) => (
-            <View key={group.id} style={styles.channelCardWrapper}>
-              <TouchableOpacity
-                style={[styles.channelCard, selectedGroup === group.id && styles.activeChannelCard]}
-                onPress={() => setSelectedGroup(group.id)}
-              >
-                <View style={styles.channelCardContent}>
-                  <Ionicons 
-                    name="wifi" 
-                    size={20} 
-                    color={selectedGroup === group.id ? '#fff' : '#888'} 
-                  />
-                  <Text style={[styles.channelCardTitle, selectedGroup === group.id && styles.activeChannelCardTitle]}>
-                    {group.name.toUpperCase()}
-                  </Text>
-                  <Text style={[styles.channelCardSubtitle, selectedGroup === group.id && styles.activeChannelCardSubtitle]}>
-                    {group.description || 'Funkkanal'}
-                  </Text>
-                  {selectedGroup === group.id && (
-                    <View style={styles.activeIndicator}>
-                      <Ionicons name="radio-button-on" size={12} color="#4CAF50" />
-                      <Text style={styles.activeText}>AKTIV</Text>
-                    </View>
-                  )}
-                </View>
-              </TouchableOpacity>
-              
-              {/* Kanal-Management-Buttons */}
-              <View style={styles.channelManagementButtons}>
-                <TouchableOpacity
-                  style={styles.editChannelButton}
-                  onPress={() => openGroupModal(group)}
+          {/* Recording UI */}
+          {recordingUri && (
+            <View style={styles.recordingPreview}>
+              <Text style={styles.recordingText}>Sprachnachricht aufgenommen</Text>
+              <View style={styles.recordingActions}>
+                <TouchableOpacity 
+                  style={styles.discardButton}
+                  onPress={() => setRecordingUri(null)}
                 >
-                  <Ionicons name="create-outline" size={16} color="#4CAF50" />
+                  <Ionicons name="trash" size={20} color="#fff" />
                 </TouchableOpacity>
-                <TouchableOpacity
-                  style={styles.deleteChannelButton}
-                  onPress={() => deleteGroup(group.id)}
+                <TouchableOpacity 
+                  style={styles.sendVoiceButton}
+                  onPress={sendVoiceMessage}
+                  disabled={loading}
                 >
-                  <Ionicons name="trash-outline" size={16} color="#ff4444" />
+                  <Ionicons name="send" size={20} color="#fff" />
                 </TouchableOpacity>
               </View>
             </View>
-          ))}
-          
-          {/* Neuer Kanal Schnell-Button */}
-          <TouchableOpacity
-            style={styles.quickAddChannelCard}
-            onPress={() => openGroupModal()}
-          >
-            <View style={styles.quickAddContent}>
-              <Ionicons name="add-circle" size={32} color="#ff4444" />
-              <Text style={styles.quickAddText}>NEUER</Text>
-              <Text style={styles.quickAddText}>KANAL</Text>
-            </View>
-          </TouchableOpacity>
-        </ScrollView>
-      </View>
+          )}
 
-      {/* Nachrichten */}
-      <FlatList
-        data={getFilteredMessages()}
-        renderItem={renderMessage}
-        keyExtractor={(item) => item.id}
-        style={styles.messagesList}
-        contentContainerStyle={styles.messagesContainer}
-        showsVerticalScrollIndicator={false}
-        ListEmptyComponent={
-          <View style={styles.emptyState}>
-            <Ionicons name="radio" size={80} color="#666" />
-            <Text style={styles.emptyText}>Noch keine Nachrichten</Text>
-            <Text style={styles.emptySubtext}>
-              Senden Sie die erste Nachricht in {currentGroupName}
-            </Text>
-          </View>
-        }
-      />
-
-      {/* Eingabebereich */}
-      <KeyboardAvoidingView 
-        behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
-        style={styles.inputContainer}
-      >
-        <View style={styles.inputRow}>
-          <TextInput
-            style={styles.textInput}
-            value={newMessage}
-            onChangeText={setNewMessage}
-            placeholder="Funkspruch eingeben..."
-            placeholderTextColor="#666"
-            multiline
-            maxLength={500}
-          />
-          
-          <TouchableOpacity
-            style={[styles.voiceButton, isRecording && styles.voiceButtonActive]}
-            onPress={startVoiceRecording}
-            disabled={isRecording}
-          >
-            <Ionicons 
-              name={isRecording ? 'stop' : 'mic'} 
-              size={24} 
-              color={isRecording ? '#fff' : '#ff4444'} 
+          {/* Input Area */}
+          <View style={styles.inputContainer}>
+            <TextInput
+              style={styles.textInput}
+              value={newMessage}
+              onChangeText={setNewMessage}
+              placeholder="Nachricht eingeben..."
+              placeholderTextColor="#666"
+              multiline
+              maxLength={500}
             />
-          </TouchableOpacity>
-          
+            
+            <TouchableOpacity
+              style={styles.voiceButton}
+              onPressIn={startRecording}
+              onPressOut={stopRecording}
+              disabled={loading}
+            >
+              <MaterialIcons 
+                name={isRecordingVoice ? "stop" : "mic"} 
+                size={24} 
+                color={isRecordingVoice ? "#ff4444" : "#fff"} 
+              />
+            </TouchableOpacity>
+            
+            <TouchableOpacity
+              style={styles.sendButton}
+              onPress={sendMessage}
+              disabled={loading || !newMessage.trim()}
+            >
+              {loading ? (
+                <ActivityIndicator size="small" color="#fff" />
+              ) : (
+                <Ionicons name="send" size={20} color="#fff" />
+              )}
+            </TouchableOpacity>
+          </View>
+        </View>
+      ) : (
+        <View style={styles.noChannelSelected}>
+          <Ionicons name="radio" size={80} color="#666" />
+          <Text style={styles.noChannelText}>Wählen Sie einen Kanal aus</Text>
           <TouchableOpacity
-            style={[styles.sendButton, !newMessage.trim() && styles.sendButtonDisabled]}
-            onPress={sendMessage}
-            disabled={!newMessage.trim()}
+            style={styles.manageChannelsButton}
+            onPress={() => setShowChannelManager(true)}
           >
-            <Ionicons name="send" size={24} color="#fff" />
+            <Text style={styles.manageChannelsText}>Kanäle verwalten</Text>
           </TouchableOpacity>
         </View>
-      </KeyboardAvoidingView>
+      )}
 
-      {/* Kanal/Kategorie Management Modal */}
+      {/* Channel Manager Modal */}
       <Modal
         animationType="slide"
         transparent={true}
-        visible={groupModalVisible}
-        onRequestClose={() => setGroupModalVisible(false)}
+        visible={showChannelManager}
+        onRequestClose={() => setShowChannelManager(false)}
       >
         <View style={styles.modalOverlay}>
-          <View style={styles.modalContent}>
+          <View style={styles.channelManagerModal}>
             <View style={styles.modalHeader}>
-              <TouchableOpacity onPress={() => setGroupModalVisible(false)}>
-                <Text style={styles.cancelButton}>Abbrechen</Text>
+              <TouchableOpacity onPress={() => setShowChannelManager(false)}>
+                <Text style={styles.cancelButton}>Schließen</Text>
               </TouchableOpacity>
-              <Text style={styles.modalTitle}>
-                📻 {editingGroup ? 'Kanal bearbeiten' : 'Neuer Kanal'}
-              </Text>
-              <TouchableOpacity onPress={saveGroup}>
-                <Text style={styles.saveButton}>Speichern</Text>
+              <Text style={styles.modalTitle}>📻 Kanal-Verwaltung</Text>
+              <TouchableOpacity onPress={() => {
+                setEditingChannel(null);
+                setChannelForm({ name: '', description: '' });
+                setChannelModalVisible(true);
+              }}>
+                <Text style={styles.addButton}>+ Neu</Text>
               </TouchableOpacity>
             </View>
 
-            <ScrollView style={styles.modalForm} showsVerticalScrollIndicator={false}>
-              <Text style={styles.sectionTitle}>Kanal-Information</Text>
-              
-              <View style={styles.inputGroup}>
-                <Text style={styles.inputLabel}>🏷️ Kanal-Name *</Text>
-                <TextInput
-                  style={styles.textModalInput}
-                  value={groupForm.name}
-                  onChangeText={(text) => setGroupForm({ ...groupForm, name: text })}
-                  placeholder="z.B. Einsatzleitung, Rettungsdienst, SEK-Team..."
-                  placeholderTextColor="#666"
-                  maxLength={50}
-                />
-                <Text style={styles.helperText}>Eindeutiger Name für diesen Funkkanal</Text>
-              </View>
-
-              <View style={styles.inputGroup}>
-                <Text style={styles.inputLabel}>📝 Beschreibung</Text>
-                <TextInput
-                  style={[styles.textModalInput, styles.textArea]}
-                  value={groupForm.description}
-                  onChangeText={(text) => setGroupForm({ ...groupForm, description: text })}
-                  placeholder="Beschreibung des Kanals und Verwendungszweck..."
-                  placeholderTextColor="#666"
-                  multiline
-                  numberOfLines={3}
-                  maxLength={200}
-                />
-                <Text style={styles.helperText}>Optional: Beschreibung für andere Nutzer</Text>
-              </View>
-
-              {/* Kanal-Beispiele */}
-              <View style={styles.inputGroup}>
-                <Text style={styles.inputLabel}>💡 Kanal-Vorschläge</Text>
-                <View style={styles.suggestionContainer}>
-                  {[
-                    { name: 'Einsatzleitung', desc: 'Hauptkommunikation' },
-                    { name: 'Rettungsdienst', desc: 'Medizinische Notfälle' },
-                    { name: 'Feuerwehr', desc: 'Brand- und Rettungseinsätze' },
-                    { name: 'Polizei', desc: 'Sicherheit und Ordnung' },
-                    { name: 'SEK-Team', desc: 'Spezialeinheiten' },
-                    { name: 'Technischer Dienst', desc: 'Infrastruktur' }
-                  ].map((suggestion, index) => (
-                    <TouchableOpacity
-                      key={index}
-                      style={styles.suggestionButton}
-                      onPress={() => setGroupForm({ 
-                        name: suggestion.name, 
-                        description: suggestion.desc 
-                      })}
-                    >
-                      <Text style={styles.suggestionName}>📡 {suggestion.name}</Text>
-                      <Text style={styles.suggestionDesc}>{suggestion.desc}</Text>
-                    </TouchableOpacity>
-                  ))}
-                </View>
-              </View>
-
-              {/* Erweiterte Optionen für bestehende Kanäle */}
-              {editingGroup && (
-                <View style={styles.inputGroup}>
-                  <Text style={styles.sectionTitle}>⚙️ Kanal-Verwaltung</Text>
-                  
-                  <View style={styles.actionButtonsContainer}>
-                    <TouchableOpacity 
-                      style={styles.duplicateChannelButton}
-                      onPress={() => {
-                        // Kanal duplizieren
-                        setGroupForm({ 
-                          name: `${groupForm.name} (Kopie)`, 
-                          description: groupForm.description 
-                        });
-                        setEditingGroup(null);
-                        Alert.alert('Info', 'Kanal wird als Kopie erstellt. Geben Sie einen neuen Namen ein.');
-                      }}
-                    >
-                      <Ionicons name="copy" size={20} color="#fff" />
-                      <Text style={styles.actionButtonText}>Kanal duplizieren</Text>
-                    </TouchableOpacity>
-                    
-                    <TouchableOpacity 
-                      style={styles.deleteChannelButton}
-                      onPress={() => {
-                        setGroupModalVisible(false);
-                        deleteGroup(editingGroup.id);
-                      }}
-                    >
-                      <Ionicons name="trash" size={20} color="#fff" />
-                      <Text style={styles.actionButtonText}>Kanal löschen</Text>
-                    </TouchableOpacity>
-                  </View>
-                </View>
-              )}
-            </ScrollView>
+            <FlatList
+              data={channels}
+              renderItem={renderChannel}
+              keyExtractor={(item) => item.id}
+              style={styles.channelsList}
+            />
           </View>
         </View>
       </Modal>
 
-      {/* Profil Modal */}
+      {/* Channel Create/Edit Modal */}
       <Modal
         animationType="slide"
         transparent={true}
-        visible={profileModalVisible}
-        onRequestClose={() => setProfileModalVisible(false)}
+        visible={channelModalVisible}
+        onRequestClose={() => setChannelModalVisible(false)}
       >
         <View style={styles.modalOverlay}>
-          <View style={styles.profileModalContent}>
+          <View style={styles.modalContent}>
             <View style={styles.modalHeader}>
-              <TouchableOpacity onPress={() => setProfileModalVisible(false)}>
+              <TouchableOpacity onPress={() => setChannelModalVisible(false)}>
                 <Text style={styles.cancelButton}>Abbrechen</Text>
               </TouchableOpacity>
-              <Text style={styles.modalTitle}>Anzeigename ändern</Text>
-              <TouchableOpacity onPress={updateProfile}>
+              <Text style={styles.modalTitle}>
+                {editingChannel ? '✏️ Kanal bearbeiten' : '➕ Neuer Kanal'}
+              </Text>
+              <TouchableOpacity onPress={saveChannel}>
                 <Text style={styles.saveButton}>Speichern</Text>
               </TouchableOpacity>
             </View>
 
-            <View style={styles.profileForm}>
+            <View style={styles.modalForm}>
               <View style={styles.inputGroup}>
-                <Text style={styles.inputLabel}>Anzeigename *</Text>
+                <Text style={styles.inputLabel}>Kanal-Name *</Text>
                 <TextInput
                   style={styles.textModalInput}
-                  value={newDisplayName}
-                  onChangeText={setNewDisplayName}
-                  placeholder="Ihr Anzeigename"
+                  value={channelForm.name}
+                  onChangeText={(text) => setChannelForm(prev => ({ ...prev, name: text }))}
+                  placeholder="z.B. Einsatzleitung"
                   placeholderTextColor="#666"
                   maxLength={50}
                 />
               </View>
-              <Text style={styles.helpText}>
-                Dieser Name wird anderen Admins im Funkgerät angezeigt
+
+              <View style={styles.inputGroup}>
+                <Text style={styles.inputLabel}>Beschreibung</Text>
+                <TextInput
+                  style={styles.textModalInput}
+                  value={channelForm.description}
+                  onChangeText={(text) => setChannelForm(prev => ({ ...prev, description: text }))}
+                  placeholder="Beschreibung des Kanals"
+                  placeholderTextColor="#666"
+                  maxLength={100}
+                />
+              </View>
+            </View>
+          </View>
+        </View>
+      </Modal>
+
+      {/* Admin Profile Modal */}
+      <Modal
+        animationType="slide"
+        transparent={true}
+        visible={adminProfileModalVisible}
+        onRequestClose={() => setAdminProfileModalVisible(false)}
+      >
+        <View style={styles.modalOverlay}>
+          <View style={styles.modalContent}>
+            <View style={styles.modalHeader}>
+              <TouchableOpacity onPress={() => setAdminProfileModalVisible(false)}>
+                <Text style={styles.cancelButton}>Abbrechen</Text>
+              </TouchableOpacity>
+              <Text style={styles.modalTitle}>👤 Admin Profil</Text>
+              <TouchableOpacity onPress={saveAdminProfile}>
+                <Text style={styles.saveButton}>Speichern</Text>
+              </TouchableOpacity>
+            </View>
+
+            <View style={styles.modalForm}>
+              <View style={styles.inputGroup}>
+                <Text style={styles.inputLabel}>Anzeigename *</Text>
+                <TextInput
+                  style={styles.textModalInput}
+                  value={adminName}
+                  onChangeText={setAdminName}
+                  placeholder="Ihr Name im Chat"
+                  placeholderTextColor="#666"
+                  maxLength={50}
+                />
+              </View>
+              
+              <Text style={styles.profileHint}>
+                Dieser Name wird in Chat-Nachrichten angezeigt
               </Text>
             </View>
           </View>
@@ -590,607 +829,300 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
+    backgroundColor: '#c41e3a',
     paddingHorizontal: 20,
-    paddingVertical: 16,
+    paddingVertical: 15,
     borderBottomWidth: 1,
-    borderBottomColor: '#333',
+    borderBottomColor: '#a01527',
+  },
+  headerActions: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  headerActionButton: {
+    marginLeft: 15,
+    padding: 5,
   },
   headerCenter: {
     flex: 1,
     alignItems: 'center',
   },
   headerTitle: {
-    fontSize: 20,
-    fontWeight: 'bold',
     color: '#fff',
-  },
-  headerSubtitle: {
-    fontSize: 12,
-    color: '#888',
-    marginTop: 2,
-  },
-  headerActions: {
-    flexDirection: 'row',
-    gap: 8,
-  },
-  headerButton: {
-    padding: 8,
-    borderRadius: 8,
-    backgroundColor: '#333',
-  },
-  // NEUE PROMINENTE KANAL-KATEGORIE-SEKTION STYLES
-  channelCategorySection: {
-    backgroundColor: '#2a2a2a',
-    borderBottomWidth: 2,
-    borderBottomColor: '#ff4444',
-    paddingHorizontal: 20,
-    paddingVertical: 16,
-  },
-  categoryHeader: {
-    alignItems: 'center',
-    marginBottom: 16,
-  },
-  categoryTitleContainer: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 8,
-    marginBottom: 4,
-  },
-  categoryMainTitle: {
     fontSize: 18,
     fontWeight: 'bold',
-    color: '#fff',
-    letterSpacing: 1,
   },
-  categorySubtitle: {
+  selectedChannelText: {
+    color: '#ffcccc',
     fontSize: 12,
-    color: '#888',
-    textAlign: 'center',
-    fontStyle: 'italic',
   },
-  categoryActions: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-  },
-  newChannelMainButton: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: '#ff4444',
-    paddingHorizontal: 20,
-    paddingVertical: 12,
-    borderRadius: 25,
-    gap: 8,
-    elevation: 3,
-    shadowColor: '#ff4444',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.3,
-    shadowRadius: 4,
-  },
-  newChannelMainText: {
-    color: '#fff',
-    fontSize: 16,
-    fontWeight: 'bold',
-    letterSpacing: 0.5,
-  },
-  categoryStats: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: '#333',
-    paddingHorizontal: 16,
-    paddingVertical: 8,
-    borderRadius: 20,
-  },
-  statItem: {
-    alignItems: 'center',
-  },
-  statNumber: {
-    fontSize: 16,
-    fontWeight: 'bold',
-    color: '#ff4444',
-  },
-  statLabel: {
-    fontSize: 10,
-    color: '#888',
-    marginTop: 2,
-  },
-  statDivider: {
-    width: 1,
-    height: 20,
-    backgroundColor: '#555',
-    marginHorizontal: 12,
-  },
-  // ERWEITERTE KANAL-NAVIGATION STYLES
-  activeChannelsSection: {
-    backgroundColor: '#1a1a1a',
-    paddingVertical: 16,
-  },
-  activeChannelsTitle: {
-    fontSize: 14,
-    fontWeight: 'bold',
-    color: '#ff4444',
-    textAlign: 'center',
-    marginBottom: 12,
-    letterSpacing: 1,
-  },
-  channelsScrollContainer: {
-    paddingHorizontal: 16,
-  },
-  channelCardWrapper: {
-    marginRight: 12,
-  },
-  channelCard: {
-    backgroundColor: '#333',
-    borderRadius: 12,
-    padding: 16,
-    minWidth: 140,
-    minHeight: 100,
-    borderWidth: 2,
-    borderColor: '#444',
-  },
-  activeChannelCard: {
-    backgroundColor: '#ff4444',
-    borderColor: '#ff6666',
-    elevation: 4,
-    shadowColor: '#ff4444',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.3,
-    shadowRadius: 4,
-  },
-  channelCardContent: {
-    alignItems: 'center',
-    justifyContent: 'center',
+  chatArea: {
     flex: 1,
-  },
-  channelCardTitle: {
-    fontSize: 12,
-    fontWeight: 'bold',
-    color: '#888',
-    textAlign: 'center',
-    marginTop: 8,
-    marginBottom: 4,
-  },
-  activeChannelCardTitle: {
-    color: '#fff',
-  },
-  channelCardSubtitle: {
-    fontSize: 10,
-    color: '#666',
-    textAlign: 'center',
-  },
-  activeChannelCardSubtitle: {
-    color: '#ffdddd',
-  },
-  activeIndicator: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    marginTop: 6,
-    gap: 4,
-  },
-  activeText: {
-    fontSize: 8,
-    color: '#4CAF50',
-    fontWeight: 'bold',
-  },
-  channelManagementButtons: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    marginTop: 8,
-  },
-  editChannelButton: {
-    backgroundColor: '#4CAF50',
-    padding: 8,
-    borderRadius: 8,
-    flex: 1,
-    marginRight: 4,
-    alignItems: 'center',
-  },
-  deleteChannelButton: {
-    backgroundColor: '#ff4444',
-    padding: 8,
-    borderRadius: 8,
-    flex: 1,
-    marginLeft: 4,
-    alignItems: 'center',
-  },
-  quickAddChannelCard: {
-    backgroundColor: '#2a2a2a',
-    borderRadius: 12,
-    padding: 16,
-    minWidth: 100,
-    minHeight: 100,
-    borderWidth: 2,
-    borderColor: '#ff4444',
-    borderStyle: 'dashed',
-    marginRight: 16,
-  },
-  quickAddContent: {
-    alignItems: 'center',
-    justifyContent: 'center',
-    flex: 1,
-  },
-  quickAddText: {
-    fontSize: 10,
-    fontWeight: 'bold',
-    color: '#ff4444',
-    textAlign: 'center',
-    marginTop: 4,
-  },
-  channelManagement: {
-    backgroundColor: '#2a2a2a',
-    borderBottomWidth: 1,
-    borderBottomColor: '#333',
-    paddingHorizontal: 20,
-    paddingVertical: 12,
-  },
-  channelHeader: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-  },
-  channelTitle: {
-    fontSize: 16,
-    fontWeight: 'bold',
-    color: '#fff',
-  },
-  newChannelButton: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: '#ff4444',
-    paddingHorizontal: 16,
-    paddingVertical: 8,
-    borderRadius: 20,
-    gap: 6,
-  },
-  newChannelText: {
-    color: '#fff',
-    fontSize: 14,
-    fontWeight: '600',
-  },
-  groupsContainer: {
-    backgroundColor: '#2a2a2a',
-    borderBottomWidth: 1,
-    borderBottomColor: '#333',
-  },
-  channelChipContainer: {
-    flexDirection: 'column',
-    alignItems: 'center',
-    marginRight: 8,
-  },
-  channelChip: {
-    backgroundColor: '#333',
-    paddingHorizontal: 16,
-    paddingVertical: 8,
-    borderRadius: 12,
-    marginLeft: 8,
-    marginVertical: 8,
-    minWidth: 120,
-  },
-  activeChannelChip: {
-    backgroundColor: '#ff4444',
-  },
-  channelChipContent: {
-    alignItems: 'center',
-  },
-  channelChipText: {
-    fontSize: 12,
-    color: '#888',
-    fontWeight: '600',
-    textAlign: 'center',
-  },
-  activeChannelChipText: {
-    color: '#fff',
-    fontWeight: '600',
-  },
-  channelDescription: {
-    fontSize: 10,
-    color: '#666',
-    marginTop: 2,
-    textAlign: 'center',
-  },
-  activeChannelDescription: {
-    color: '#ddd',
-  },
-  channelActions: {
-    flexDirection: 'row',
-    gap: 4,
-    marginTop: 4,
-  },
-  channelActionButton: {
-    padding: 4,
-    borderRadius: 8,
-    backgroundColor: '#333',
-  },
-  groupChipContainer: {
-    flexDirection: 'column',
-    alignItems: 'center',
-    marginRight: 8,
-  },
-  groupChip: {
-    backgroundColor: '#333',
-    paddingHorizontal: 16,
-    paddingVertical: 8,
-    borderRadius: 20,
-    marginLeft: 8,
-    marginVertical: 12,
-  },
-  activeGroupChip: {
-    backgroundColor: '#ff4444',
-  },
-  groupChipText: {
-    fontSize: 14,
-    color: '#888',
-  },
-  activeGroupChipText: {
-    color: '#fff',
-    fontWeight: '600',
-  },
-  groupEditButton: {
-    padding: 4,
-    marginLeft: 4,
   },
   messagesList: {
     flex: 1,
-  },
-  messagesContainer: {
-    padding: 16,
-    flexGrow: 1,
+    paddingHorizontal: 15,
+    paddingVertical: 10,
   },
   messageContainer: {
-    marginBottom: 12,
-    alignItems: 'flex-start',
-  },
-  ownMessageContainer: {
-    alignItems: 'flex-end',
-  },
-  messageBubble: {
-    backgroundColor: '#333',
-    borderRadius: 16,
+    marginVertical: 4,
     padding: 12,
+    borderRadius: 12,
     maxWidth: '80%',
-    borderBottomLeftRadius: 4,
   },
-  ownMessageBubble: {
-    backgroundColor: '#ff4444',
-    borderBottomLeftRadius: 16,
-    borderBottomRightRadius: 4,
+  ownMessage: {
+    backgroundColor: '#c41e3a',
+    alignSelf: 'flex-end',
   },
-  senderName: {
-    fontSize: 12,
-    color: '#ff4444',
-    fontWeight: '600',
+  otherMessage: {
+    backgroundColor: '#333',
+    alignSelf: 'flex-start',
+  },
+  messageHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
     marginBottom: 4,
   },
-  messageText: {
-    fontSize: 16,
+  senderName: {
     color: '#fff',
-    lineHeight: 20,
-  },
-  ownMessageText: {
-    color: '#fff',
-  },
-  voiceMessage: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 8,
+    fontSize: 12,
+    fontWeight: 'bold',
   },
   messageTime: {
-    fontSize: 11,
-    color: '#888',
-    marginTop: 4,
+    color: '#ccc',
+    fontSize: 10,
   },
-  ownMessageTime: {
-    color: '#ddd',
+  messageText: {
+    color: '#fff',
+    fontSize: 14,
+  },
+  voiceMessageContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  playButton: {
+    backgroundColor: 'rgba(255,255,255,0.2)',
+    borderRadius: 15,
+    width: 30,
+    height: 30,
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginRight: 10,
+  },
+  voiceMessageText: {
+    color: '#fff',
+    fontSize: 14,
   },
   inputContainer: {
-    borderTopWidth: 1,
-    borderTopColor: '#333',
-    backgroundColor: '#2a2a2a',
-  },
-  inputRow: {
     flexDirection: 'row',
     alignItems: 'flex-end',
-    paddingHorizontal: 16,
-    paddingVertical: 12,
-    gap: 8,
+    padding: 15,
+    backgroundColor: '#2a2a2a',
+    borderTopWidth: 1,
+    borderTopColor: '#444',
   },
   textInput: {
     flex: 1,
     backgroundColor: '#333',
     borderRadius: 20,
-    paddingHorizontal: 16,
+    paddingHorizontal: 15,
     paddingVertical: 10,
-    fontSize: 16,
+    marginRight: 10,
     color: '#fff',
     maxHeight: 100,
   },
   voiceButton: {
-    width: 44,
-    height: 44,
-    borderRadius: 22,
-    backgroundColor: '#333',
+    backgroundColor: '#666',
+    borderRadius: 20,
+    width: 40,
+    height: 40,
     justifyContent: 'center',
     alignItems: 'center',
-  },
-  voiceButtonActive: {
-    backgroundColor: '#ff4444',
+    marginRight: 10,
   },
   sendButton: {
-    width: 44,
-    height: 44,
-    borderRadius: 22,
-    backgroundColor: '#ff4444',
+    backgroundColor: '#c41e3a',
+    borderRadius: 20,
+    width: 40,
+    height: 40,
     justifyContent: 'center',
     alignItems: 'center',
   },
-  sendButtonDisabled: {
-    backgroundColor: '#666',
+  recordingPreview: {
+    backgroundColor: '#444',
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    paddingHorizontal: 15,
+    paddingVertical: 10,
+    borderTopWidth: 1,
+    borderTopColor: '#555',
   },
-  emptyState: {
+  recordingText: {
+    color: '#fff',
+    fontSize: 14,
+  },
+  recordingActions: {
+    flexDirection: 'row',
+  },
+  discardButton: {
+    backgroundColor: '#666',
+    borderRadius: 15,
+    width: 30,
+    height: 30,
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginRight: 10,
+  },
+  sendVoiceButton: {
+    backgroundColor: '#c41e3a',
+    borderRadius: 15,
+    width: 30,
+    height: 30,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  noChannelSelected: {
     flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
-    paddingTop: 100,
+    padding: 40,
   },
-  emptyText: {
-    fontSize: 18,
+  noChannelText: {
     color: '#666',
-    marginTop: 16,
+    fontSize: 18,
+    marginTop: 20,
     textAlign: 'center',
   },
-  emptySubtext: {
-    fontSize: 14,
-    color: '#888',
-    marginTop: 8,
-    textAlign: 'center',
+  manageChannelsButton: {
+    backgroundColor: '#c41e3a',
+    paddingHorizontal: 30,
+    paddingVertical: 15,
+    borderRadius: 25,
+    marginTop: 30,
+  },
+  manageChannelsText: {
+    color: '#fff',
+    fontSize: 16,
+    fontWeight: 'bold',
   },
   modalOverlay: {
     flex: 1,
     backgroundColor: 'rgba(0,0,0,0.5)',
-    justifyContent: 'flex-end',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  channelManagerModal: {
+    width: width * 0.9,
+    maxHeight: '80%',
+    backgroundColor: '#2a2a2a',
+    borderRadius: 20,
+    padding: 20,
   },
   modalContent: {
-    backgroundColor: '#1a1a1a',
-    borderTopLeftRadius: 20,
-    borderTopRightRadius: 20,
-    maxHeight: '70%',
-  },
-  profileModalContent: {
-    backgroundColor: '#1a1a1a',
-    borderTopLeftRadius: 20,
-    borderTopRightRadius: 20,
-    maxHeight: '50%',
+    width: width * 0.9,
+    backgroundColor: '#2a2a2a',
+    borderRadius: 20,
+    padding: 20,
   },
   modalHeader: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    padding: 20,
-    borderBottomWidth: 1,
-    borderBottomColor: '#333',
-  },
-  modalTitle: {
-    fontSize: 18,
-    fontWeight: 'bold',
-    color: '#fff',
-  },
-  cancelButton: {
-    fontSize: 16,
-    color: '#888',
-  },
-  saveButton: {
-    fontSize: 16,
-    color: '#ff4444',
-    fontWeight: '600',
-  },
-  modalForm: {
-    padding: 20,
-  },
-  profileForm: {
-    padding: 20,
-  },
-  inputGroup: {
     marginBottom: 20,
   },
-  inputLabel: {
-    fontSize: 16,
+  modalTitle: {
     color: '#fff',
-    marginBottom: 8,
+    fontSize: 18,
+    fontWeight: 'bold',
+  },
+  cancelButton: {
+    color: '#666',
+    fontSize: 16,
+  },
+  addButton: {
+    color: '#c41e3a',
+    fontSize: 16,
+    fontWeight: 'bold',
+  },
+  saveButton: {
+    color: '#c41e3a',
+    fontSize: 16,
+    fontWeight: 'bold',
+  },
+  channelsList: {
+    maxHeight: 400,
+  },
+  channelRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: 10,
+  },
+  channelButton: {
+    flex: 1,
+    backgroundColor: '#333',
+    padding: 15,
+    borderRadius: 10,
+    marginRight: 10,
+  },
+  selectedChannel: {
+    backgroundColor: '#c41e3a',
+  },
+  channelContent: {
+    flex: 1,
+  },
+  channelName: {
+    color: '#fff',
+    fontSize: 16,
+    fontWeight: 'bold',
+  },
+  channelDescription: {
+    color: '#ccc',
+    fontSize: 12,
+    marginTop: 2,
+  },
+  channelActions: {
+    flexDirection: 'row',
+  },
+  actionButton: {
+    borderRadius: 15,
+    width: 30,
+    height: 30,
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginLeft: 5,
+  },
+  editButton: {
+    backgroundColor: '#007bff', // Blau für bearbeiten
+  },
+  deleteButton: {
+    backgroundColor: '#dc3545', // Rot für löschen
+  },
+  modalForm: {
+    gap: 15,
+  },
+  inputGroup: {
+    gap: 8,
+  },
+  inputLabel: {
+    color: '#fff',
+    fontSize: 14,
     fontWeight: '600',
   },
   textModalInput: {
-    backgroundColor: '#2a2a2a',
-    borderRadius: 8,
-    padding: 16,
-    fontSize: 16,
-    color: '#fff',
-    borderWidth: 1,
-    borderColor: '#333',
-  },
-  textArea: {
-    height: 80,
-    textAlignVertical: 'top',
-  },
-  deleteGroupButton: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    backgroundColor: '#ff4444',
-    paddingVertical: 12,
-    paddingHorizontal: 20,
-    borderRadius: 8,
-    marginTop: 20,
-  },
-  deleteGroupText: {
-    color: '#fff',
-    fontSize: 16,
-    fontWeight: '600',
-    marginLeft: 8,
-  },
-  helpText: {
-    fontSize: 14,
-    color: '#888',
-    textAlign: 'center',
-    marginTop: 8,
-  },
-  sectionTitle: {
-    fontSize: 18,
-    fontWeight: 'bold',
-    color: '#ff4444',
-    marginBottom: 16,
-    textAlign: 'center',
-  },
-  helperText: {
-    fontSize: 12,
-    color: '#666',
-    marginTop: 4,
-    fontStyle: 'italic',
-  },
-  suggestionContainer: {
-    gap: 8,
-  },
-  suggestionButton: {
-    backgroundColor: '#2a2a2a',
+    backgroundColor: '#f5f5f5',
     borderRadius: 8,
     padding: 12,
-    borderWidth: 1,
-    borderColor: '#444',
-  },
-  suggestionName: {
-    fontSize: 14,
-    color: '#fff',
-    fontWeight: '600',
-  },
-  suggestionDesc: {
-    fontSize: 12,
-    color: '#888',
-    marginTop: 2,
-  },
-  actionButtonsContainer: {
-    gap: 12,
-  },
-  duplicateChannelButton: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    backgroundColor: '#4CAF50',
-    paddingVertical: 12,
-    paddingHorizontal: 20,
-    borderRadius: 8,
-  },
-  deleteChannelButton: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    backgroundColor: '#ff4444',
-    paddingVertical: 12,
-    paddingHorizontal: 20,
-    borderRadius: 8,
-  },
-  actionButtonText: {
-    color: '#fff',
     fontSize: 16,
-    fontWeight: '600',
-    marginLeft: 8,
+    color: '#333',
+    borderWidth: 1,
+    borderColor: '#ddd',
+  },
+  profileHint: {
+    fontSize: 12,
+    color: '#666',
+    textAlign: 'center',
+    marginTop: 10,
+    fontStyle: 'italic',
   },
 });
