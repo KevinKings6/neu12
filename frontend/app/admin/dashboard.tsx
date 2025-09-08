@@ -620,7 +620,7 @@ export default function AdminDashboard() {
 
   const openRoleModal = (user: User) => {
     setSelectedUser(user);
-    setSelectedRole(user.role as 'user' | 'team' | 'admin');
+    setSelectedRole(user.role as 'user' | 'team' | 'admin' | 'emergency');
     setRoleModalVisible(true);
   };
 
