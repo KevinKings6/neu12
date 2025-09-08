@@ -802,21 +802,6 @@ async def get_chat_messages(chat_type: str = "admin", group_id: Optional[str] = 
     return [ChatMessage(**message) for message in messages][::-1]  # Reverse to show oldest first
 
 
-@api_router.delete("/admin/chat/{message_id}")
-async def delete_chat_message(message_id: str, current_admin: User = Depends(get_current_admin_user)):
-    """Admin deletes chat message"""
-    if not ObjectId.is_valid(message_id):
-        raise HTTPException(status_code=400, detail="Invalid message ID")
-    
-    # Only allow deletion of own messages or if user is admin
-    message = await db.chat_messages.find_one({"_id": ObjectId(message_id)})
-    if not message:
-        raise HTTPException(status_code=404, detail="Message not found")
-    
-    result = await db.chat_messages.delete_one({"_id": ObjectId(message_id)})
-    return {"message": "Chat message deleted successfully"}
-
-
 class UpdateAdminProfile(BaseModel):
     full_name: str
 
