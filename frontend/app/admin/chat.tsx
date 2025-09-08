@@ -180,29 +180,62 @@ export default function AdminChat() {
   };
 
   const sendMessage = async () => {
-    if (!newMessage.trim()) {
+    if (!newMessage.trim() || !token) {
       Alert.alert('Fehler', 'Bitte geben Sie eine Nachricht ein');
       return;
     }
 
-    const newMsg: ChatMessage = {
-      id: Date.now().toString(),
-      user_id: user?.id || '1',
-      username: user?.full_name || 'Admin',
-      message: newMessage,
-      chat_type: 'voice',
-      group_id: selectedGroup,
-      is_voice_message: false,
-      created_at: new Date().toISOString()
-    };
-
-    setMessages(prev => [...prev, newMsg]);
-    setNewMessage('');
+    setLoading(true);
     
-    // Scroll to bottom
-    setTimeout(() => {
-      flatListRef.current?.scrollToEnd({ animated: true });
-    }, 100);
+    try {
+      const messageData = {
+        message: newMessage,
+        chat_type: 'admin',
+        group_id: selectedGroup,
+        is_voice_message: false
+      };
+
+      const response = await fetch(`${BACKEND_URL}/api/admin/chat`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`,
+        },
+        body: JSON.stringify(messageData)
+      });
+
+      if (response.ok) {
+        const sentMessage = await response.json();
+        
+        // Nachricht zur lokalen Liste hinzufügen
+        const newMsg: ChatMessage = {
+          id: sentMessage.id || sentMessage._id || Date.now().toString(),
+          user_id: user?.id || '1',
+          username: user?.full_name || 'Admin',
+          message: newMessage,
+          chat_type: 'admin',
+          group_id: selectedGroup,
+          is_voice_message: false,
+          created_at: new Date().toISOString()
+        };
+
+        setMessages(prev => [...prev, newMsg]);
+        setNewMessage('');
+        
+        // Scroll to bottom
+        setTimeout(() => {
+          flatListRef.current?.scrollToEnd({ animated: true });
+        }, 100);
+      } else {
+        console.error('Failed to send message:', response.status);
+        Alert.alert('Fehler', 'Nachricht konnte nicht gesendet werden');
+      }
+    } catch (error) {
+      console.error('Error sending message:', error);
+      Alert.alert('Fehler', 'Fehler beim Senden der Nachricht');
+    } finally {
+      setLoading(false);
+    }
   };
 
   const startVoiceRecording = async () => {
