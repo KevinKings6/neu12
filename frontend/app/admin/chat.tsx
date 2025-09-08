@@ -70,7 +70,46 @@ export default function AdminChat() {
   // Funkgerät Kanäle (von Backend geladen)
   const [channels, setChannels] = useState<ChatGroup[]>([]);
 
-  // Modal states
+  // Admin profile management
+  const [adminProfileModalVisible, setAdminProfileModalVisible] = useState(false);
+  const [adminName, setAdminName] = useState('');
+
+  const openAdminProfileModal = () => {
+    setAdminName(user?.full_name || '');
+    setAdminProfileModalVisible(true);
+  };
+
+  const saveAdminProfile = async () => {
+    if (!adminName.trim() || !token) {
+      Alert.alert('Fehler', 'Bitte geben Sie einen Namen ein');
+      return;
+    }
+
+    setLoading(true);
+    
+    try {
+      const response = await fetch(`${BACKEND_URL}/api/admin/profile`, {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`,
+        },
+        body: JSON.stringify({ full_name: adminName })
+      });
+
+      if (response.ok) {
+        setAdminProfileModalVisible(false);
+        Alert.alert('Erfolg', 'Ihr Name wurde aktualisiert!');
+      } else {
+        Alert.alert('Fehler', 'Name konnte nicht aktualisiert werden');
+      }
+    } catch (error) {
+      console.error('Error updating admin profile:', error);
+      Alert.alert('Fehler', 'Fehler beim Aktualisieren des Profils');
+    } finally {
+      setLoading(false);
+    }
+  };
   const [channelModalVisible, setChannelModalVisible] = useState(false);
   const [editingChannel, setEditingChannel] = useState<ChatGroup | null>(null);
   const [channelForm, setChannelForm] = useState({
