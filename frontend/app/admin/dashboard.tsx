@@ -589,7 +589,6 @@ export default function AdminDashboard() {
   };
 
   // User role management
-  const [selectedUser, setSelectedUser] = useState<User | null>(null);
   const [roleModalVisible, setRoleModalVisible] = useState(false);
   const [selectedRole, setSelectedRole] = useState<'user' | 'team' | 'admin'>('user');
 
