@@ -75,6 +75,10 @@ export default function AdminDashboard() {
   const [selectedUser, setSelectedUser] = useState<User | null>(null);
   const [userGroups, setUserGroups] = useState<string[]>([]);
 
+  // User role management
+  const [roleModalVisible, setRoleModalVisible] = useState(false);
+  const [selectedRole, setSelectedRole] = useState<'user' | 'team' | 'admin'>('user');
+
   useEffect(() => {
     if (!isAdmin()) {
       Alert.alert('Zugriff verweigert', 'Sie haben keine Berechtigung für diesen Bereich');
