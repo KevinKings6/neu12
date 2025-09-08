@@ -89,6 +89,39 @@ export default function AdminChat() {
     loadMessages();
   }, [selectedGroup]);
 
+  const loadChannels = async () => {
+    if (!token) return;
+    
+    try {
+      const response = await fetch(`${BACKEND_URL}/api/admin/chat/groups`, {
+        headers: {
+          'Authorization': `Bearer ${token}`,
+        },
+      });
+
+      if (response.ok) {
+        const channelsData = await response.json();
+        setChannels(channelsData);
+      } else {
+        console.error('Failed to load channels:', response.status);
+        // Fallback zu Standard-Kanälen wenn API fehlt
+        setChannels([
+          { id: '1', name: 'Kanal 1', description: 'Einsatzleitung', created_by: 'admin', members: [], is_active: true, created_at: new Date().toISOString() },
+          { id: '2', name: 'Kanal 2', description: 'Rettungsdienst', created_by: 'admin', members: [], is_active: true, created_at: new Date().toISOString() },
+          { id: '3', name: 'Kanal 3', description: 'Feuerwehr', created_by: 'admin', members: [], is_active: true, created_at: new Date().toISOString() },
+        ]);
+      }
+    } catch (error) {
+      console.error('Error loading channels:', error);
+      // Fallback zu Standard-Kanälen
+      setChannels([
+        { id: '1', name: 'Kanal 1', description: 'Einsatzleitung', created_by: 'admin', members: [], is_active: true, created_at: new Date().toISOString() },
+        { id: '2', name: 'Kanal 2', description: 'Rettungsdienst', created_by: 'admin', members: [], is_active: true, created_at: new Date().toISOString() },
+        { id: '3', name: 'Kanal 3', description: 'Feuerwehr', created_by: 'admin', members: [], is_active: true, created_at: new Date().toISOString() },
+      ]);
+    }
+  };
+
   const loadMessages = async () => {
     // Simulation von Nachrichten für Demo
     const demoMessages: ChatMessage[] = [
