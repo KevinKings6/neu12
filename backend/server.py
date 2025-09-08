@@ -992,6 +992,66 @@ async def create_emergency_user(current_admin: User = Depends(get_current_admin_
         raise HTTPException(status_code=500, detail="Internal server error")
 
 
+# SOS Management endpoints
+@api_router.put("/admin/sos/{sos_id}/activate")
+async def activate_sos_alert(sos_id: str, current_admin: User = Depends(get_current_admin_user)):
+    """Admin activates SOS alert (moves it to active state and removes from pending list)"""
+    try:
+        if not ObjectId.is_valid(sos_id):
+            raise HTTPException(status_code=400, detail="Invalid SOS ID")
+        
+        # Update SOS status to active
+        result = await db.sos_alerts.update_one(
+            {"_id": ObjectId(sos_id)},
+            {"$set": {"status": "active", "activated_by": current_admin.id, "activated_at": datetime.utcnow()}}
+        )
+        
+        if result.matched_count == 0:
+            raise HTTPException(status_code=404, detail="SOS alert not found")
+        
+        return {"message": "SOS alert activated successfully", "status": "active"}
+    except Exception as e:
+        print(f"Error activating SOS alert: {e}")
+        raise HTTPException(status_code=500, detail="Internal server error")
+
+# Enhanced profile update for name changes
+@api_router.put("/profile")
+async def update_user_profile(request: dict, current_user: User = Depends(get_current_user)):
+    """User updates their own profile (name changes)"""
+    try:
+        updates = {}
+        
+        # Allow updating full_name
+        if "full_name" in request:
+            full_name = request["full_name"].strip()
+            if not full_name:
+                raise HTTPException(status_code=400, detail="Name cannot be empty")
+            updates["full_name"] = full_name
+        
+        # Allow updating other profile fields
+        allowed_fields = ["full_name", "phone", "address", "emergency_contact"]
+        for field in allowed_fields:
+            if field in request and field != "full_name":
+                updates[field] = request[field]
+        
+        if not updates:
+            raise HTTPException(status_code=400, detail="No valid fields to update")
+        
+        # Update user profile
+        result = await db.users.update_one(
+            {"_id": ObjectId(current_user.id)},
+            {"$set": updates}
+        )
+        
+        if result.matched_count == 0:
+            raise HTTPException(status_code=404, detail="User not found")
+        
+        return {"message": "Profile updated successfully", "updated_fields": list(updates.keys())}
+    except Exception as e:
+        print(f"Error updating profile: {e}")
+        raise HTTPException(status_code=500, detail="Internal server error")
+
+
 # Include the router in the main app
 app.include_router(api_router)
 
