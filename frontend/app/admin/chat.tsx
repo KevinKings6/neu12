@@ -67,15 +67,8 @@ export default function AdminChat() {
   const [showAllChannels, setShowAllChannels] = useState(false); // Switch für alle Kanäle
   const flatListRef = useRef<FlatList>(null);
 
-  // Funkgerät Kanäle (Standard-Kanäle)
-  const [channels, setChannels] = useState<ChatGroup[]>([
-    { id: '1', name: 'Kanal 1', description: 'Einsatzleitung', created_by: 'admin', members: [], is_active: true, created_at: new Date().toISOString() },
-    { id: '2', name: 'Kanal 2', description: 'Rettungsdienst', created_by: 'admin', members: [], is_active: true, created_at: new Date().toISOString() },
-    { id: '3', name: 'Kanal 3', description: 'Feuerwehr', created_by: 'admin', members: [], is_active: true, created_at: new Date().toISOString() },
-    { id: '4', name: 'Kanal 4', description: 'Polizei', created_by: 'admin', members: [], is_active: true, created_at: new Date().toISOString() },
-    { id: '5', name: 'Kanal 5', description: 'THW', created_by: 'admin', members: [], is_active: true, created_at: new Date().toISOString() },
-    { id: '6', name: 'Kanal 6', description: 'Notarzt', created_by: 'admin', members: [], is_active: true, created_at: new Date().toISOString() },
-  ]);
+  // Funkgerät Kanäle (von Backend geladen)
+  const [channels, setChannels] = useState<ChatGroup[]>([]);
 
   // Modal states
   const [channelModalVisible, setChannelModalVisible] = useState(false);
