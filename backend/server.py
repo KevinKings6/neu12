@@ -504,7 +504,8 @@ async def get_all_users(current_admin: User = Depends(get_current_admin_user)):
 
 @api_router.get("/admin/sos-alerts", response_model=List[SOSAlert])
 async def get_all_sos_alerts(current_admin: User = Depends(get_current_admin_user)):
-    alerts = await db.sos_alerts.find().sort("created_at", -1).to_list(1000)
+    # Only return pending SOS alerts (not active ones)
+    alerts = await db.sos_alerts.find({"status": {"$in": ["pending", "new"]}}).sort("created_at", -1).to_list(1000)
     for alert in alerts:
         alert["_id"] = str(alert["_id"])
     return [SOSAlert(**alert) for alert in alerts]
