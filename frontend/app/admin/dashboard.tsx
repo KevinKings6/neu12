@@ -592,10 +592,6 @@ export default function AdminDashboard() {
     setNewsModalVisible(true);
   };
 
-  // User role management
-  const [roleModalVisible, setRoleModalVisible] = useState(false);
-  const [selectedRole, setSelectedRole] = useState<'user' | 'team' | 'admin'>('user');
-
   const updateUserRole = async () => {
     if (!selectedUser || !token) return;
 
