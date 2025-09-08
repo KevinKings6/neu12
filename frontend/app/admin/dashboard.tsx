@@ -986,6 +986,56 @@ export default function AdminDashboard() {
           </View>
         </View>
       </Modal>
+
+      {/* Role Modal */}
+      <Modal
+        animationType="slide"
+        transparent={true}
+        visible={roleModalVisible}
+        onRequestClose={() => setRoleModalVisible(false)}
+      >
+        <View style={styles.modalOverlay}>
+          <View style={styles.newsModalContent}>
+            <View style={styles.modalHeader}>
+              <TouchableOpacity onPress={() => setRoleModalVisible(false)}>
+                <Text style={styles.cancelButton}>Abbrechen</Text>
+              </TouchableOpacity>
+              <Text style={styles.modalTitle}>
+                Rolle für {selectedUser?.full_name}
+              </Text>
+              <TouchableOpacity onPress={updateUserRole}>
+                <Text style={styles.saveButton}>Speichern</Text>
+              </TouchableOpacity>
+            </View>
+
+            <ScrollView style={styles.newsForm} showsVerticalScrollIndicator={false}>
+              <Text style={styles.inputLabel}>Rolle auswählen:</Text>
+              
+              {(['user', 'team', 'admin'] as const).map((role) => (
+                <TouchableOpacity
+                  key={role}
+                  style={styles.groupItem}
+                  onPress={() => setSelectedRole(role)}
+                >
+                  <View style={styles.groupInfo}>
+                    <Text style={styles.groupName}>{getRoleName(role)}</Text>
+                    <Text style={styles.groupDescription}>
+                      {role === 'admin' ? 'Vollzugriff auf alle Funktionen' :
+                       role === 'team' ? 'Erweiterte Berechtigungen für Teamleiter' :
+                       'Standardbenutzer mit Grundfunktionen'}
+                    </Text>
+                  </View>
+                  <View style={[styles.checkbox, selectedRole === role && styles.checkboxActive]}>
+                    {selectedRole === role && (
+                      <Ionicons name="checkmark" size={16} color="#fff" />
+                    )}
+                  </View>
+                </TouchableOpacity>
+              ))}
+            </ScrollView>
+          </View>
+        </View>
+      </Modal>
     </SafeAreaView>
   );
 }
