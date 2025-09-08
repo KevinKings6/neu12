@@ -649,9 +649,14 @@ export default function AdminChat() {
           <Text style={styles.headerTitle}>📻 FUNKGERÄT</Text>
           <Text style={styles.headerSubtitle}>{getCurrentChannelName()}</Text>
         </View>
-        <TouchableOpacity onPress={openAdminProfileModal}>
-          <Ionicons name="person-circle" size={24} color="#fff" />
-        </TouchableOpacity>
+        <View style={styles.headerActions}>
+          <TouchableOpacity onPress={openAdminProfileModal} style={styles.headerActionButton}>
+            <Ionicons name="person-circle" size={24} color="#fff" />
+          </TouchableOpacity>
+          <TouchableOpacity onPress={() => setShowChannelManager(true)} style={styles.headerActionButton}>
+            <Ionicons name="settings" size={24} color="#fff" />
+          </TouchableOpacity>
+        </View>
       </View>
 
       {/* Status Bar */}
