@@ -1173,6 +1173,21 @@ const styles = StyleSheet.create({
   inactiveUserCard: {
     opacity: 0.6,
   },
+  userRoleContainer: {
+    marginTop: 8,
+  },
+  roleChip: {
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    borderRadius: 12,
+    alignSelf: 'flex-start',
+  },
+  activateButton: {
+    backgroundColor: '#4CAF50',
+  },
+  deactivateButton: {
+    backgroundColor: '#ff4444',
+  },
   userInfo: {
     flex: 1,
     marginBottom: 12,
