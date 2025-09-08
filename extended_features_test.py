@@ -354,7 +354,7 @@ class ExtendedFeaturesAPITester:
             self.log_test("Persistent Message Storage", False, "No admin token available")
             return
         
-        # Create test groups first
+        # Create test groups first using internal URL (due to Kubernetes ingress limitations)
         test_groups = [
             {"name": "Kanal Alpha", "description": "Test Kanal Alpha"},
             {"name": "Kanal Beta", "description": "Test Kanal Beta"},
@@ -364,15 +364,16 @@ class ExtendedFeaturesAPITester:
         group_ids = []
         for i, group_data in enumerate(test_groups):
             try:
+                # Use internal URL for chat groups due to Kubernetes ingress limitations
                 response = self.session.post(
-                    f"{self.base_url}/admin/chat/groups",
+                    f"{INTERNAL_URL}/admin/chat/groups",
                     json=group_data,
                     headers=self.get_auth_headers(self.admin_token)
                 )
                 
                 if response.status_code == 200:
                     created_group = response.json()
-                    group_id = created_group.get("id")
+                    group_id = created_group.get("id") or created_group.get("_id")
                     if group_id:
                         group_ids.append(group_id)
                         self.created_group_ids.append(group_id)
@@ -380,13 +381,14 @@ class ExtendedFeaturesAPITester:
                     self.log_test(
                         f"Create Test Group {i+1}",
                         True,
-                        f"Group '{group_data['name']}' created for testing"
+                        f"Group '{group_data['name']}' created for testing (internal URL)"
                     )
                 else:
                     self.log_test(
                         f"Create Test Group {i+1}",
                         False,
-                        f"Failed to create test group: {response.status_code}"
+                        f"Failed to create test group: {response.status_code}",
+                        {"response_text": response.text}
                     )
             except Exception as e:
                 self.log_test(
@@ -396,7 +398,7 @@ class ExtendedFeaturesAPITester:
                 )
         
         if len(group_ids) < 2:
-            self.log_test("Persistent Message Storage", False, "Not enough test groups created")
+            self.log_test("Persistent Message Storage", False, f"Not enough test groups created. Got {len(group_ids)}, need at least 2")
             return
         
         # Send messages to different channels
