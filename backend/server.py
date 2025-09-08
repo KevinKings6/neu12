@@ -592,7 +592,7 @@ async def update_user_role(user_id: str, role_data: UpdateUserRole, current_admi
     if not ObjectId.is_valid(user_id):
         raise HTTPException(status_code=400, detail="Invalid user ID")
     
-    if role_data.role not in ["admin", "user"]:
+    if role_data.role not in ["admin", "user", "team"]:
         raise HTTPException(status_code=400, detail="Invalid role")
     
     if user_id == current_admin.id:
