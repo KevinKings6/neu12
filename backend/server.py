@@ -731,6 +731,7 @@ async def get_chat_groups(current_admin: User = Depends(get_current_admin_user))
     """Admin gets all chat groups"""
     groups = await db.chat_groups.find({"is_active": True}).to_list(1000)
     for group in groups:
+        group["id"] = str(group["_id"])
         group["_id"] = str(group["_id"])
     return [ChatGroup(**group) for group in groups]
 
