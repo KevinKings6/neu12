@@ -50,7 +50,7 @@ class User(BaseModel):
     created_at: datetime = Field(default_factory=datetime.utcnow)
 
     class Config:
-        allow_population_by_field_name = True
+        populate_by_name = True  # Pydantic v2 equivalent of allow_population_by_field_name
 
 
 class UserCreate(BaseModel):
