@@ -1015,7 +1015,7 @@ export default function AdminDashboard() {
             <ScrollView style={styles.newsForm} showsVerticalScrollIndicator={false}>
               <Text style={styles.inputLabel}>Rolle auswählen:</Text>
               
-              {(['user', 'team', 'admin'] as const).map((role) => (
+              {(['user', 'team', 'admin', 'emergency'] as const).map((role) => (
                 <TouchableOpacity
                   key={role}
                   style={styles.groupItem}
