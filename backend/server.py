@@ -1020,6 +1020,35 @@ def hash_password(password: str) -> str:
     return pwd_context.hash(password)
 
 
+if __name__ == "__main__":
+    import uvicorn
+    uvicorn.run(app, host="0.0.0.0", port=8000)
+
+app.add_middleware(
+    CORSMiddleware,
+    allow_credentials=True,
+    allow_origins=["*"],
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
+
+# Configure logging
+logging.basicConfig(
+    level=logging.INFO,
+    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s'
+)
+logger = logging.getLogger(__name__)
+
+@app.on_event("shutdown")
+async def shutdown_db_client():
+    client.close()
+
+
+# Helper function for password hashing (if not already defined)
+def hash_password(password: str) -> str:
+    return pwd_context.hash(password)
+
+
 # Chat message management endpoints
 @api_router.put("/admin/chat/{message_id}")
 async def update_chat_message(message_id: str, request: dict, current_admin: User = Depends(get_current_admin_user)):
