@@ -615,6 +615,11 @@ export default function AdminDashboard() {
     setNewsModalVisible(true);
   };
 
+  // User role management
+  const [selectedUser, setSelectedUser] = useState<User | null>(null);
+  const [roleModalVisible, setRoleModalVisible] = useState(false);
+  const [selectedRole, setSelectedRole] = useState<'user' | 'team' | 'admin'>('user');
+
   const saveNews = async () => {
     if (!newsForm.title.trim() || !newsForm.content.trim()) {
       Alert.alert('Fehler', 'Bitte Titel und Inhalt eingeben');
