@@ -1026,6 +1026,7 @@ export default function AdminDashboard() {
                     <Text style={styles.groupDescription}>
                       {role === 'admin' ? 'Vollzugriff auf alle Funktionen' :
                        role === 'team' ? 'Erweiterte Berechtigungen für Teamleiter' :
+                       role === 'emergency' ? 'Notfall-Berechtigungen für Rettungsdienste' :
                        'Standardbenutzer mit Grundfunktionen'}
                     </Text>
                   </View>
