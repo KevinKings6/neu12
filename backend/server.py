@@ -49,8 +49,7 @@ class User(BaseModel):
     is_active: bool = True
     created_at: datetime = Field(default_factory=datetime.utcnow)
 
-    class Config:
-        populate_by_name = True  # Pydantic v2 equivalent of allow_population_by_field_name
+    model_config = {"populate_by_name": True}
 
 
 class UserCreate(BaseModel):
