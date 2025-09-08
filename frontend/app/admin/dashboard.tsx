@@ -1170,6 +1170,9 @@ const styles = StyleSheet.create({
     padding: 16,
     marginBottom: 16,
   },
+  inactiveUserCard: {
+    opacity: 0.6,
+  },
   userInfo: {
     flex: 1,
     marginBottom: 12,
