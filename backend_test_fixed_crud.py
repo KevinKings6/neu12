@@ -519,8 +519,30 @@ class FixedCRUDTester:
         """Test FIXED SOS Activation - PUT /api/admin/sos/{sos_id}/activate"""
         print("\n=== Testing FIXED SOS Activation ===")
         
-        if not self.admin_token or not self.test_sos_ids:
-            self.log_test("SOS Activation", False, "No admin token or test SOS alerts available")
+        if not self.admin_token:
+            self.log_test("SOS Activation", False, "No admin token available")
+            return
+        
+        # Get SOS IDs from existing SOS alerts if we don't have them
+        if not self.test_sos_ids:
+            try:
+                sos_response = self.session.get(
+                    f"{self.external_url}/sos-alerts",
+                    headers=self.get_auth_headers(self.admin_token)
+                )
+                if sos_response.status_code == 200:
+                    sos_alerts = sos_response.json()
+                    for alert in sos_alerts:
+                        alert_id = alert.get("id")
+                        if alert_id and alert_id not in self.test_sos_ids:
+                            self.test_sos_ids.append(alert_id)
+                            if len(self.test_sos_ids) >= 3:
+                                break
+            except Exception as e:
+                self.log_test("Get SOS for Activation Testing", False, f"Error getting SOS alerts: {str(e)}")
+        
+        if not self.test_sos_ids:
+            self.log_test("SOS Activation", False, "No test SOS alerts available for activation testing")
             return
         
         # Test activating SOS alerts
