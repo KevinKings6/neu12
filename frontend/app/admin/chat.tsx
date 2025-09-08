@@ -85,6 +85,162 @@ export default function AdminChat() {
     setAdminProfileModalVisible(true);
   };
 
+  // Voice recording functions
+  const requestAudioPermission = async () => {
+    try {
+      const permission = await Audio.requestPermissionsAsync();
+      return permission.status === 'granted';
+    } catch (error) {
+      console.error('Error requesting audio permission:', error);
+      return false;
+    }
+  };
+
+  const startRecording = async () => {
+    try {
+      const hasPermission = await requestAudioPermission();
+      if (!hasPermission) {
+        Alert.alert('Berechtigung erforderlich', 'Mikrofonzugriff ist erforderlich für Sprachnachrichten');
+        return;
+      }
+
+      await Audio.setAudioModeAsync({
+        allowsRecordingIOS: true,
+        playsInSilentModeIOS: true,
+      });
+
+      const newRecording = new Audio.Recording();
+      await newRecording.prepareToRecordAsync(Audio.RECORDING_OPTIONS_PRESET_HIGH_QUALITY);
+      await newRecording.startAsync();
+      
+      setRecording(newRecording);
+      setIsRecording(true);
+    } catch (error) {
+      console.error('Failed to start recording:', error);
+      Alert.alert('Fehler', 'Aufnahme konnte nicht gestartet werden');
+    }
+  };
+
+  const stopRecording = async () => {
+    if (!recording) return;
+
+    try {
+      await recording.stopAndUnloadAsync();
+      const uri = recording.getURI();
+      setRecordingUri(uri);
+      setIsRecording(false);
+      setRecording(null);
+    } catch (error) {
+      console.error('Failed to stop recording:', error);
+      Alert.alert('Fehler', 'Aufnahme konnte nicht gestoppt werden');
+    }
+  };
+
+  const sendVoiceMessage = async () => {
+    if (!recordingUri || !token) return;
+
+    setLoading(true);
+    
+    try {
+      // Convert audio file to base64
+      const audioBase64 = await FileSystem.readAsStringAsync(recordingUri, {
+        encoding: FileSystem.EncodingType.Base64,
+      });
+
+      const messageData = {
+        message: 'Sprachnachricht',
+        chat_type: 'admin',
+        group_id: selectedGroup,
+        is_voice_message: true,
+        voice_data: audioBase64,
+        voice_duration: await getAudioDuration(recordingUri)
+      };
+
+      const response = await fetch(`${BACKEND_URL}/api/admin/chat`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`,
+        },
+        body: JSON.stringify(messageData)
+      });
+
+      if (response.ok) {
+        const sentMessage = await response.json();
+        
+        const newMsg: ChatMessage = {
+          id: sentMessage.id || sentMessage._id || Date.now().toString(),
+          user_id: user?.id || '1',
+          username: user?.full_name || 'Admin',
+          message: 'Sprachnachricht',
+          chat_type: 'admin',
+          group_id: selectedGroup,
+          is_voice_message: true,
+          voice_data: audioBase64,
+          voice_duration: messageData.voice_duration,
+          created_at: new Date().toISOString()
+        };
+
+        setMessages(prev => [...prev, newMsg]);
+        setRecordingUri(null);
+        
+        setTimeout(() => {
+          flatListRef.current?.scrollToEnd({ animated: true });
+        }, 100);
+      } else {
+        Alert.alert('Fehler', 'Sprachnachricht konnte nicht gesendet werden');
+      }
+    } catch (error) {
+      console.error('Error sending voice message:', error);
+      Alert.alert('Fehler', 'Fehler beim Senden der Sprachnachricht');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const getAudioDuration = async (uri: string) => {
+    try {
+      const { sound } = await Audio.Sound.createAsync({ uri });
+      const status = await sound.getStatusAsync();
+      if (status.isLoaded) {
+        return Math.floor((status.durationMillis || 0) / 1000);
+      }
+      return 0;
+    } catch (error) {
+      return 0;
+    }
+  };
+
+  const playVoiceMessage = async (messageId: string, voiceData: string) => {
+    try {
+      if (playingMessageId === messageId) {
+        setPlayingMessageId(null);
+        return;
+      }
+
+      // Create temp file
+      const tempUri = `${FileSystem.documentDirectory}temp_voice_${messageId}.m4a`;
+      await FileSystem.writeAsStringAsync(tempUri, voiceData, {
+        encoding: FileSystem.EncodingType.Base64,
+      });
+
+      const { sound } = await Audio.Sound.createAsync({ uri: tempUri });
+      setPlayingMessageId(messageId);
+      
+      sound.setOnPlaybackStatusUpdate((status) => {
+        if (status.isLoaded && status.didJustFinish) {
+          setPlayingMessageId(null);
+        }
+      });
+
+      await sound.playAsync();
+    } catch (error) {
+      console.error('Error playing voice message:', error);
+      setPlayingMessageId(null);
+      Alert.alert('Fehler', 'Sprachnachricht konnte nicht abgespielt werden');
+    }
+  };
+
   const saveAdminProfile = async () => {
     if (!adminName.trim() || !token) {
       Alert.alert('Fehler', 'Bitte geben Sie einen Namen ein');
