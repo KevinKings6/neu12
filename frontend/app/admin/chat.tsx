@@ -79,7 +79,13 @@ export default function AdminChat() {
   });
 
   useEffect(() => {
-    // Einfaches Laden der Nachrichten ohne Auth-Check
+    // Lade Kanäle und Nachrichten beim Start
+    loadChannels();
+    loadMessages();
+  }, []);
+
+  useEffect(() => {
+    // Nachrichten neu laden wenn Kanal gewechselt wird
     loadMessages();
   }, [selectedGroup]);
 
