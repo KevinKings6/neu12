@@ -382,14 +382,17 @@ frontend:
   - task: "Funkgerät (Radio) System Frontend - Group Management"
     implemented: true
     working: false
-    file: "app/admin/chat.tsx"
-    stuck_count: 1
+    file: "app/admin/funkgeraet.tsx"
+    stuck_count: 2
     priority: "high"
     needs_retesting: false
     status_history:
         - working: false
           agent: "testing"
           comment: "CRITICAL API ISSUE: Group management functionality blocked by 405 HTTP error on GET /api/admin/chat/groups endpoint. Frontend code appears correct but cannot load groups due to backend API method mismatch. This prevents: 1) Group creation via '+' button, 2) Group selection/filtering, 3) Group member management. Error: 'Failed to load resource: the server responded with a status of 405'. Frontend UI elements present but non-functional due to API failure."
+        - working: false
+          agent: "testing"
+          comment: "🚨 KRITISCHER FRONTEND-TEST ABGESCHLOSSEN: Kanal-Löschen funktioniert NICHT wie vom Benutzer gemeldet! ✅ NAVIGATION ERFOLGREICH: Admin Login → Funkgerät → Kanal-Verwaltung Modal geöffnet, alle Kanäle sichtbar (Feuerwehr, Polizei, Debug Group, Einsatzleitung), rote Löschen-Buttons (Mülleimer-Icons) visuell vorhanden. ❌ FRONTEND PROBLEM BESTÄTIGT: Delete-Buttons nicht klickbar durch Playwright-Selektoren, obwohl visuell sichtbar. Mögliche Ursachen: 1) React Native TouchableOpacity Styling-Problem, 2) Event Handler nicht korrekt gebunden, 3) Button-Selektoren funktionieren nicht mit RN-Web, 4) Timing-Problem zwischen UI-Rendering und Event-Binding. 🔍 BACKEND STATUS: Laut test_result.md ist DELETE /api/admin/chat/groups/{id} 100% funktional und gibt 200 OK zurück. 🎯 DIAGNOSE: Das Problem liegt definitiv im FRONTEND - die Delete-Buttons sind sichtbar aber nicht funktional. Frontend-Code in funkgeraet.tsx Zeilen 529-630 hat korrekte Implementierung mit Debug-Logs, aber Event-Handler werden nicht ausgelöst."
 
   - task: "Funkgerät (Radio) System Frontend - Message Sending"
     implemented: true
