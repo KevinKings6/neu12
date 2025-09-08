@@ -529,66 +529,39 @@ export default function AdminDashboard() {
   );
 
   const renderUser = ({ item }: { item: User }) => (
-    <View style={styles.userCard}>
+    <TouchableOpacity
+      key={item.id}
+      style={[
+        styles.userCard,
+        !item.is_active && styles.inactiveUserCard
+      ]}
+      onPress={() => openRoleModal(item)}
+    >
       <View style={styles.userInfo}>
-        <View style={styles.userHeader}>
-          <Text style={styles.userName}>{item.full_name}</Text>
-          <View style={[styles.roleBadge, { backgroundColor: item.role === 'admin' ? '#ff4444' : '#2196F3' }]}>
-            <Text style={styles.roleText}>{item.role.toUpperCase()}</Text>
-          </View>
-        </View>
+        <Text style={styles.userName}>{item.full_name}</Text>
         <Text style={styles.userEmail}>{item.email}</Text>
-        <Text style={styles.userUsername}>@{item.username}</Text>
-        <Text style={styles.userDate}>Erstellt: {formatDate(item.created_at)}</Text>
-        
-        {/* Show groups user belongs to */}
-        <View style={styles.userGroupsContainer}>
-          {groups.filter(group => group.members.includes(item.id)).map(group => (
-            <View key={group.id} style={styles.userGroupChip}>
-              <Text style={styles.userGroupText}>{group.name}</Text>
-            </View>
-          ))}
+        <View style={styles.userRoleContainer}>
+          <View style={[styles.roleChip, { backgroundColor: getRoleColor(item.role) }]}>
+            <Text style={styles.roleText}>{getRoleName(item.role)}</Text>
+          </View>
         </View>
       </View>
       <View style={styles.userActions}>
-        <View style={styles.userStatus}>
-          <View style={[styles.statusIndicator, { backgroundColor: item.is_active ? '#4CAF50' : '#ff4444' }]} />
-          <Text style={[styles.statusLabel, { color: item.is_active ? '#4CAF50' : '#ff4444' }]}>
-            {item.is_active ? 'Aktiv' : 'Gesperrt'}
-          </Text>
-        </View>
-        <View style={styles.userButtonsContainer}>
-          {item.id !== user?.id && (
-            <>
-              <TouchableOpacity
-                style={[styles.statusButton, { backgroundColor: item.is_active ? '#ff4444' : '#4CAF50' }]}
-                onPress={() => toggleUserStatus(item._id || item.id, item.is_active)}
-              >
-                <Text style={styles.statusButtonText}>
-                  {item.is_active ? 'Sperren' : 'Aktivieren'}
-                </Text>
-              </TouchableOpacity>
-              
-              <TouchableOpacity
-                style={[styles.statusButton, { backgroundColor: item.role === 'admin' ? '#666' : '#ff4444' }]}
-                onPress={() => changeUserRole(item._id || item.id, item.role === 'admin' ? 'user' : 'admin')}
-              >
-                <Text style={styles.statusButtonText}>
-                  {item.role === 'admin' ? '→ User' : '→ Admin'}
-                </Text>
-              </TouchableOpacity>
-              
-              <TouchableOpacity
-                style={[styles.statusButton, { backgroundColor: '#9C27B0' }]}
-                onPress={() => openUserGroupModal(item)}
-              >
-                <Text style={styles.statusButtonText}>Gruppen</Text>
-              </TouchableOpacity>
-            </>
-          )}
-        </View>
+        <TouchableOpacity
+          style={[
+            styles.actionButton,
+            item.is_active ? styles.deactivateButton : styles.activateButton
+          ]}
+          onPress={() => toggleUserStatus(item.id, item.is_active)}
+        >
+          <Ionicons 
+            name={item.is_active ? "close-circle" : "checkmark-circle"} 
+            size={20} 
+            color="#fff" 
+          />
+        </TouchableOpacity>
       </View>
-    </View>
+    </TouchableOpacity>
   );
 
   const [newsModalVisible, setNewsModalVisible] = useState(false);
