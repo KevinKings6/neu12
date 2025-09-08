@@ -11,8 +11,8 @@ import base64
 from datetime import datetime
 from typing import Dict, Any, List, Optional
 
-# Backend API base URL from frontend environment
-BASE_URL = "https://emergency-sos-3.preview.emergentagent.com/api"
+# Backend API base URL - using internal URL due to Kubernetes ingress limitations
+BASE_URL = "http://localhost:8001/api"
 
 class UserRoleManagementTester:
     def __init__(self):
