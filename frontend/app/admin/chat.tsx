@@ -649,8 +649,8 @@ export default function AdminChat() {
           <Text style={styles.headerTitle}>📻 FUNKGERÄT</Text>
           <Text style={styles.headerSubtitle}>{getCurrentChannelName()}</Text>
         </View>
-        <TouchableOpacity onPress={() => setShowChannelManager(true)}>
-          <Ionicons name="settings" size={24} color="#fff" />
+        <TouchableOpacity onPress={openAdminProfileModal}>
+          <Ionicons name="person-circle" size={24} color="#fff" />
         </TouchableOpacity>
       </View>
 
