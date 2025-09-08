@@ -677,6 +677,8 @@ export default function AdminDashboard() {
         return 'Unbekannt';
     }
   };
+
+  const saveNews = async () => {
     if (!newsForm.title.trim() || !newsForm.content.trim()) {
       Alert.alert('Fehler', 'Bitte Titel und Inhalt eingeben');
       return;
