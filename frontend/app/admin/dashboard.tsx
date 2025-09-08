@@ -597,7 +597,58 @@ export default function AdminDashboard() {
     setNewsModalVisible(true);
   };
 
-  const updateUserRole = async () => {
+  // SOS Management functions
+  const openSosDetails = async (sosAlert: SOSAlert) => {
+    setSelectedSOS(sosAlert);
+    
+    // Parse GPS location if available
+    if (sosAlert.location) {
+      try {
+        const locationParts = sosAlert.location.split(',');
+        if (locationParts.length === 2) {
+          const latitude = parseFloat(locationParts[0].trim());
+          const longitude = parseFloat(locationParts[1].trim());
+          setSosLocation({ latitude, longitude });
+        } else {
+          setSosLocation(null);
+        }
+      } catch (error) {
+        console.error('Error parsing location:', error);
+        setSosLocation(null);
+      }
+    } else {
+      setSosLocation(null);
+    }
+    
+    setSosDetailModalVisible(true);
+  };
+
+  const activateSOS = async (sosId: string) => {
+    if (!token) return;
+
+    try {
+      const response = await fetch(`${BACKEND_URL}/api/admin/sos/${sosId}/activate`, {
+        method: 'PUT',
+        headers: {
+          'Authorization': `Bearer ${token}`,
+        },
+      });
+
+      if (response.ok) {
+        // Reload SOS alerts to reflect the change
+        await loadData();
+        setSosDetailModalVisible(false);
+        Alert.alert('Erfolg', 'SOS-Alarm wurde als AKTIV markiert und aus der Liste entfernt');
+      } else {
+        Alert.alert('Fehler', 'SOS-Status konnte nicht geändert werden');
+      }
+    } catch (error) {
+      console.error('Error activating SOS:', error);
+      Alert.alert('Fehler', 'Fehler beim Aktivieren des SOS-Alarms');
+    }
+  };
+
+  const updateUserProfile = async () => {
     if (!selectedUser || !token) return;
 
     try {
