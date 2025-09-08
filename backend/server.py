@@ -877,33 +877,6 @@ def hash_password(password: str) -> str:
     return pwd_context.hash(password)
 
 
-@api_router.put("/admin/users/{user_id}/role", response_model=dict)
-async def update_user_role(user_id: str, request: dict, current_admin: User = Depends(get_current_admin_user)):
-    """Admin updates user role"""
-    try:
-        # Validate role
-        role = request.get("role")
-        if role not in ["user", "team", "admin"]:
-            raise HTTPException(status_code=400, detail="Invalid role")
-        
-        # Don't allow changing own role
-        if user_id == str(current_admin.id):
-            raise HTTPException(status_code=400, detail="Cannot change own role")
-        
-        # Update user role
-        result = await db.users.update_one(
-            {"_id": ObjectId(user_id)},
-            {"$set": {"role": role}}
-        )
-        
-        if result.matched_count == 0:
-            raise HTTPException(status_code=404, detail="User not found")
-        
-        return {"message": f"User role updated to {role}"}
-    except Exception as e:
-        print(f"Error updating user role: {e}")
-        raise HTTPException(status_code=500, detail="Internal server error")
-
 # Test endpoint for direct role update
 @api_router.post("/admin/test-user-role")
 async def test_user_role_update():
