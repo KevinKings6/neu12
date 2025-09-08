@@ -620,7 +620,63 @@ export default function AdminDashboard() {
   const [roleModalVisible, setRoleModalVisible] = useState(false);
   const [selectedRole, setSelectedRole] = useState<'user' | 'team' | 'admin'>('user');
 
-  const saveNews = async () => {
+  const updateUserRole = async () => {
+    if (!selectedUser || !token) return;
+
+    try {
+      const response = await fetch(`${BACKEND_URL}/api/admin/users/${selectedUser.id}/role`, {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`,
+        },
+        body: JSON.stringify({ role: selectedRole })
+      });
+
+      if (response.ok) {
+        setRoleModalVisible(false);
+        await loadUsers();
+        Alert.alert('Erfolg', `Benutzerrang wurde auf "${selectedRole}" geändert`);
+      } else {
+        Alert.alert('Fehler', 'Benutzerrang konnte nicht geändert werden');
+      }
+    } catch (error) {
+      console.error('Error updating user role:', error);
+      Alert.alert('Fehler', 'Fehler beim Ändern des Benutzerrangs');
+    }
+  };
+
+  const openRoleModal = (user: User) => {
+    setSelectedUser(user);
+    setSelectedRole(user.role as 'user' | 'team' | 'admin');
+    setRoleModalVisible(true);
+  };
+
+  const getRoleColor = (role: string) => {
+    switch (role) {
+      case 'admin':
+        return '#ff4444';
+      case 'team':
+        return '#ffaa00';
+      case 'user':
+        return '#00aa44';
+      default:
+        return '#666';
+    }
+  };
+
+  const getRoleName = (role: string) => {
+    switch (role) {
+      case 'admin':
+        return 'Admin';
+      case 'team':
+        return 'Team';
+      case 'user':
+        return 'User';
+      default:
+        return 'Unbekannt';
+    }
+  };
     if (!newsForm.title.trim() || !newsForm.content.trim()) {
       Alert.alert('Fehler', 'Bitte Titel und Inhalt eingeben');
       return;
