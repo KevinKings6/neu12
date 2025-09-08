@@ -310,36 +310,72 @@ export default function AdminChat() {
     setChannelModalVisible(true);
   };
 
-  const saveChannel = () => {
-    if (!channelForm.name.trim()) {
+  const saveChannel = async () => {
+    if (!channelForm.name.trim() || !token) {
       Alert.alert('Fehler', 'Bitte geben Sie einen Kanal-Namen ein');
       return;
     }
 
-    if (editingChannel) {
-      // Bearbeiten
-      setChannels(prev => prev.map(c => 
-        c.id === editingChannel.id 
-          ? { ...c, name: channelForm.name, description: channelForm.description }
-          : c
-      ));
-      Alert.alert('Erfolg', 'Kanal wurde aktualisiert!');
-    } else {
-      // Neu erstellen
-      const newChannel: ChatGroup = {
-        id: Date.now().toString(),
-        name: channelForm.name,
-        description: channelForm.description,
-        created_by: user?.id || 'admin',
-        members: [],
-        is_active: true,
-        created_at: new Date().toISOString()
-      };
-      setChannels(prev => [...prev, newChannel]);
-      Alert.alert('Erfolg', 'Neuer Kanal wurde erstellt!');
-    }
+    setLoading(true);
+    
+    try {
+      if (editingChannel) {
+        // Kanal bearbeiten
+        const response = await fetch(`${BACKEND_URL}/api/admin/chat/groups/${editingChannel.id}`, {
+          method: 'PUT',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${token}`,
+          },
+          body: JSON.stringify({
+            name: channelForm.name,
+            description: channelForm.description,
+          })
+        });
 
-    setChannelModalVisible(false);
+        if (response.ok) {
+          const updatedChannel = await response.json();
+          setChannels(prev => prev.map(c => 
+            c.id === editingChannel.id 
+              ? { ...updatedChannel, id: updatedChannel.id || updatedChannel._id }
+              : c
+          ));
+          Alert.alert('Erfolg', 'Kanal wurde aktualisiert!');
+        } else {
+          Alert.alert('Fehler', 'Kanal konnte nicht aktualisiert werden');
+        }
+      } else {
+        // Neuen Kanal erstellen
+        const response = await fetch(`${BACKEND_URL}/api/admin/chat/groups`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${token}`,
+          },
+          body: JSON.stringify({
+            name: channelForm.name,
+            description: channelForm.description,
+            members: []
+          })
+        });
+
+        if (response.ok) {
+          const newChannel = await response.json();
+          const channelWithId = { ...newChannel, id: newChannel.id || newChannel._id };
+          setChannels(prev => [...prev, channelWithId]);
+          Alert.alert('Erfolg', 'Neuer Kanal wurde erstellt!');
+        } else {
+          Alert.alert('Fehler', 'Kanal konnte nicht erstellt werden');
+        }
+      }
+      
+      setChannelModalVisible(false);
+    } catch (error) {
+      console.error('Error saving channel:', error);
+      Alert.alert('Fehler', 'Fehler beim Speichern des Kanals');
+    } finally {
+      setLoading(false);
+    }
   };
 
   const deleteChannel = (channelId: string) => {
