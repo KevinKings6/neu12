@@ -674,22 +674,26 @@ class ExtendedFeaturesAPITester:
             self.log_test("Chat Message Management", False, "No admin token available")
             return
         
-        # Create a test group and send messages
+        # Create a test group and send messages using internal URL for group creation
         group_data = {"name": "Message Management Test", "description": "Test group for message management"}
         group_id = None
         
         try:
             response = self.session.post(
-                f"{self.base_url}/admin/chat/groups",
+                f"{INTERNAL_URL}/admin/chat/groups",
                 json=group_data,
                 headers=self.get_auth_headers(self.admin_token)
             )
             
             if response.status_code == 200:
                 created_group = response.json()
-                group_id = created_group.get("id")
+                group_id = created_group.get("id") or created_group.get("_id")
                 if group_id:
                     self.created_group_ids.append(group_id)
+                    self.log_test("Create Message Test Group", True, "Test group created for message management")
+            else:
+                self.log_test("Create Message Test Group", False, f"Failed to create test group: {response.status_code}")
+                return
         except Exception as e:
             self.log_test("Create Message Test Group", False, f"Error creating test group: {str(e)}")
             return
