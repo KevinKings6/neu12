@@ -94,20 +94,25 @@ class ExtendedFeaturesAPITester:
                 print("✅ Test user created")
             elif "already registered" in response.text:
                 print("✅ Test user already exists")
-                # Get user ID from admin users list
-                if self.admin_token:
-                    users_response = self.session.get(
-                        f"{self.base_url}/admin/users",
-                        headers=self.get_auth_headers(self.admin_token)
-                    )
-                    if users_response.status_code == 200:
-                        users = users_response.json()
-                        for user in users:
-                            if user.get("username") == "testuser_extended":
-                                self.test_user_id = user.get("id")
-                                break
         except Exception as e:
             print(f"❌ Error creating test user: {e}")
+        
+        # Always get user ID from admin users list to ensure we have it
+        if self.admin_token:
+            try:
+                users_response = self.session.get(
+                    f"{self.base_url}/admin/users",
+                    headers=self.get_auth_headers(self.admin_token)
+                )
+                if users_response.status_code == 200:
+                    users = users_response.json()
+                    for user in users:
+                        if user.get("username") == "testuser_extended":
+                            self.test_user_id = user.get("id")
+                            print(f"✅ Found test user ID: {self.test_user_id}")
+                            break
+            except Exception as e:
+                print(f"❌ Error getting user ID: {e}")
         
         # Login as test user
         try:
