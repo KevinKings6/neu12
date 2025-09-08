@@ -2410,6 +2410,563 @@ class EmergencySOSAPITester:
                 f"Error checking persistence: {str(e)}"
             )
 
+    def test_sos_activation_management(self):
+        """Test new SOS Activation Management features - PUT /api/admin/sos/{sos_id}/activate"""
+        print("\n=== Testing SOS Activation Management ===")
+        
+        if not self.admin_token or not self.user_token:
+            self.log_test("SOS Activation Management", False, "No admin or user token available for testing")
+            return
+        
+        # First create a test SOS alert as a user
+        sos_data = {
+            "location_lat": 52.5200,
+            "location_lng": 13.4050,
+            "location_address": "Berlin, Deutschland - Testnotfall",
+            "alert_type": "emergency",
+            "message": "Test-Notfall für SOS-Aktivierung - GPS-Koordinaten enthalten"
+        }
+        
+        created_sos_id = None
+        
+        try:
+            # Create SOS alert as user
+            response = self.session.post(
+                f"{self.base_url}/sos-alert",
+                json=sos_data,
+                headers=self.get_auth_headers(self.user_token)
+            )
+            
+            if response.status_code == 200:
+                created_sos = response.json()
+                created_sos_id = created_sos.get("id")
+                
+                self.log_test(
+                    "Create Test SOS Alert for Activation",
+                    True,
+                    f"SOS alert created with GPS coordinates (lat: {sos_data['location_lat']}, lng: {sos_data['location_lng']})",
+                    {"sos_id": created_sos_id, "status": created_sos.get("status")}
+                )
+            else:
+                self.log_test(
+                    "Create Test SOS Alert for Activation",
+                    False,
+                    f"Failed to create SOS alert with status {response.status_code}",
+                    {"response_text": response.text}
+                )
+                return
+        except Exception as e:
+            self.log_test(
+                "Create Test SOS Alert for Activation",
+                False,
+                f"Error creating SOS alert: {str(e)}"
+            )
+            return
+        
+        # Test 1: Admin activates SOS alert
+        if created_sos_id:
+            try:
+                response = self.session.put(
+                    f"{self.base_url}/admin/sos/{created_sos_id}/activate",
+                    headers=self.get_auth_headers(self.admin_token)
+                )
+                
+                if response.status_code == 200:
+                    activation_result = response.json()
+                    
+                    self.log_test(
+                        "Admin Activate SOS Alert",
+                        True,
+                        f"SOS alert activated successfully - Status: {activation_result.get('status')}",
+                        {"activation_result": activation_result}
+                    )
+                    
+                    # Verify the SOS status was changed to active and fields were set
+                    try:
+                        verify_response = self.session.get(
+                            f"{self.base_url}/admin/sos-alerts",
+                            headers=self.get_auth_headers(self.admin_token)
+                        )
+                        
+                        if verify_response.status_code == 200:
+                            all_alerts = verify_response.json()
+                            activated_alert = next((alert for alert in all_alerts if alert.get("id") == created_sos_id), None)
+                            
+                            if activated_alert:
+                                status = activated_alert.get("status")
+                                has_activated_by = "activated_by" in activated_alert
+                                has_activated_at = "activated_at" in activated_alert
+                                
+                                if status == "active":
+                                    self.log_test(
+                                        "SOS Status Changed to Active",
+                                        True,
+                                        f"SOS status correctly set to 'active' (activated_by field: {has_activated_by}, activated_at field: {has_activated_at})"
+                                    )
+                                else:
+                                    self.log_test(
+                                        "SOS Status Changed to Active",
+                                        False,
+                                        f"SOS status is '{status}' instead of 'active'"
+                                    )
+                            else:
+                                self.log_test(
+                                    "SOS Status Verification",
+                                    False,
+                                    "Could not find activated SOS alert in admin list"
+                                )
+                    except Exception as e:
+                        self.log_test(
+                            "SOS Status Verification",
+                            False,
+                            f"Error verifying SOS status: {str(e)}"
+                        )
+                else:
+                    self.log_test(
+                        "Admin Activate SOS Alert",
+                        False,
+                        f"Failed to activate SOS alert with status {response.status_code}",
+                        {"response_text": response.text}
+                    )
+            except Exception as e:
+                self.log_test(
+                    "Admin Activate SOS Alert",
+                    False,
+                    f"Error activating SOS alert: {str(e)}"
+                )
+        
+        # Test 2: Invalid SOS ID validation
+        try:
+            response = self.session.put(
+                f"{self.base_url}/admin/sos/invalid_sos_id/activate",
+                headers=self.get_auth_headers(self.admin_token)
+            )
+            
+            if response.status_code == 400:
+                self.log_test(
+                    "Invalid SOS ID Validation",
+                    True,
+                    "Correctly rejected invalid SOS ID with 400 status"
+                )
+            else:
+                self.log_test(
+                    "Invalid SOS ID Validation",
+                    False,
+                    f"Expected 400 for invalid SOS ID but got {response.status_code}",
+                    {"response_text": response.text}
+                )
+        except Exception as e:
+            self.log_test(
+                "Invalid SOS ID Validation",
+                False,
+                f"Error testing invalid SOS ID: {str(e)}"
+            )
+        
+        # Test 3: Non-existent SOS ID
+        try:
+            fake_sos_id = "507f1f77bcf86cd799439011"  # Valid ObjectId format but non-existent
+            response = self.session.put(
+                f"{self.base_url}/admin/sos/{fake_sos_id}/activate",
+                headers=self.get_auth_headers(self.admin_token)
+            )
+            
+            if response.status_code == 404:
+                self.log_test(
+                    "Non-existent SOS ID Handling",
+                    True,
+                    "Correctly returned 404 for non-existent SOS ID"
+                )
+            else:
+                self.log_test(
+                    "Non-existent SOS ID Handling",
+                    False,
+                    f"Expected 404 for non-existent SOS ID but got {response.status_code}",
+                    {"response_text": response.text}
+                )
+        except Exception as e:
+            self.log_test(
+                "Non-existent SOS ID Handling",
+                False,
+                f"Error testing non-existent SOS ID: {str(e)}"
+            )
+
+    def test_profile_name_update(self):
+        """Test new Profile Name Update features - PUT /api/profile"""
+        print("\n=== Testing Profile Name Update ===")
+        
+        if not self.user_token:
+            self.log_test("Profile Name Update", False, "No user token available for testing")
+            return
+        
+        # Test 1: Update full_name successfully
+        update_data = {
+            "full_name": "Max Mustermann - Aktualisiert",
+            "phone": "+49-30-12345678",
+            "address": "Musterstraße 123, 10115 Berlin",
+            "emergency_contact": "Anna Mustermann - Ehefrau"
+        }
+        
+        try:
+            response = self.session.put(
+                f"{self.base_url}/profile",
+                json=update_data,
+                headers=self.get_auth_headers(self.user_token)
+            )
+            
+            if response.status_code == 200:
+                update_result = response.json()
+                updated_fields = update_result.get("updated_fields", [])
+                
+                self.log_test(
+                    "Update User Profile with Name",
+                    True,
+                    f"Profile updated successfully - Fields: {', '.join(updated_fields)}",
+                    {"update_result": update_result, "updated_fields": updated_fields}
+                )
+                
+                # Verify the name change persisted by checking user info
+                try:
+                    verify_response = self.session.get(
+                        f"{self.base_url}/me",
+                        headers=self.get_auth_headers(self.user_token)
+                    )
+                    
+                    if verify_response.status_code == 200:
+                        user_info = verify_response.json()
+                        current_name = user_info.get("full_name")
+                        
+                        if current_name == update_data["full_name"]:
+                            self.log_test(
+                                "Profile Name Change Persistence",
+                                True,
+                                f"Name change persisted correctly: '{current_name}'"
+                            )
+                        else:
+                            self.log_test(
+                                "Profile Name Change Persistence",
+                                False,
+                                f"Name not persisted correctly. Expected: '{update_data['full_name']}', Got: '{current_name}'"
+                            )
+                except Exception as e:
+                    self.log_test(
+                        "Profile Name Change Persistence",
+                        False,
+                        f"Error verifying name persistence: {str(e)}"
+                    )
+            else:
+                self.log_test(
+                    "Update User Profile with Name",
+                    False,
+                    f"Failed to update profile with status {response.status_code}",
+                    {"response_text": response.text}
+                )
+        except Exception as e:
+            self.log_test(
+                "Update User Profile with Name",
+                False,
+                f"Error updating profile: {str(e)}"
+            )
+        
+        # Test 2: Empty name validation
+        try:
+            empty_name_data = {"full_name": ""}
+            
+            response = self.session.put(
+                f"{self.base_url}/profile",
+                json=empty_name_data,
+                headers=self.get_auth_headers(self.user_token)
+            )
+            
+            if response.status_code == 400:
+                self.log_test(
+                    "Empty Name Validation",
+                    True,
+                    "Correctly rejected empty name with 400 status"
+                )
+            else:
+                self.log_test(
+                    "Empty Name Validation",
+                    False,
+                    f"Expected 400 for empty name but got {response.status_code}",
+                    {"response_text": response.text}
+                )
+        except Exception as e:
+            self.log_test(
+                "Empty Name Validation",
+                False,
+                f"Error testing empty name validation: {str(e)}"
+            )
+        
+        # Test 3: Whitespace-only name validation
+        try:
+            whitespace_name_data = {"full_name": "   "}
+            
+            response = self.session.put(
+                f"{self.base_url}/profile",
+                json=whitespace_name_data,
+                headers=self.get_auth_headers(self.user_token)
+            )
+            
+            if response.status_code == 400:
+                self.log_test(
+                    "Whitespace Name Validation",
+                    True,
+                    "Correctly rejected whitespace-only name with 400 status"
+                )
+            else:
+                self.log_test(
+                    "Whitespace Name Validation",
+                    False,
+                    f"Expected 400 for whitespace name but got {response.status_code}",
+                    {"response_text": response.text}
+                )
+        except Exception as e:
+            self.log_test(
+                "Whitespace Name Validation",
+                False,
+                f"Error testing whitespace name validation: {str(e)}"
+            )
+        
+        # Test 4: Update only phone field
+        try:
+            phone_only_data = {"phone": "+49-30-87654321"}
+            
+            response = self.session.put(
+                f"{self.base_url}/profile",
+                json=phone_only_data,
+                headers=self.get_auth_headers(self.user_token)
+            )
+            
+            if response.status_code == 200:
+                update_result = response.json()
+                self.log_test(
+                    "Update Phone Only",
+                    True,
+                    f"Phone updated successfully - Fields: {update_result.get('updated_fields', [])}"
+                )
+            else:
+                self.log_test(
+                    "Update Phone Only",
+                    False,
+                    f"Failed to update phone with status {response.status_code}",
+                    {"response_text": response.text}
+                )
+        except Exception as e:
+            self.log_test(
+                "Update Phone Only",
+                False,
+                f"Error updating phone: {str(e)}"
+            )
+        
+        # Test 5: No fields to update
+        try:
+            empty_data = {}
+            
+            response = self.session.put(
+                f"{self.base_url}/profile",
+                json=empty_data,
+                headers=self.get_auth_headers(self.user_token)
+            )
+            
+            if response.status_code == 400:
+                self.log_test(
+                    "No Fields to Update Validation",
+                    True,
+                    "Correctly rejected empty update with 400 status"
+                )
+            else:
+                self.log_test(
+                    "No Fields to Update Validation",
+                    False,
+                    f"Expected 400 for empty update but got {response.status_code}",
+                    {"response_text": response.text}
+                )
+        except Exception as e:
+            self.log_test(
+                "No Fields to Update Validation",
+                False,
+                f"Error testing empty update: {str(e)}"
+            )
+
+    def test_integration_sos_and_profile(self):
+        """Test integration scenarios combining SOS activation and profile updates"""
+        print("\n=== Testing SOS & Profile Integration ===")
+        
+        if not self.admin_token or not self.user_token:
+            self.log_test("SOS & Profile Integration", False, "No admin or user token available for testing")
+            return
+        
+        # Integration Test 1: Create SOS → Update Profile → Activate SOS → Verify workflow
+        print("\n--- Integration Test: Complete SOS Management Workflow ---")
+        
+        # Step 1: Update user profile with German emergency information
+        profile_data = {
+            "full_name": "Hans Schmidt - Notfall-Testbenutzer",
+            "phone": "+49-30-555-NOTFALL",
+            "address": "Alexanderplatz 1, 10178 Berlin",
+            "emergency_contact": "Maria Schmidt - Ehefrau (+49-30-555-MARIA)"
+        }
+        
+        try:
+            response = self.session.put(
+                f"{self.base_url}/profile",
+                json=profile_data,
+                headers=self.get_auth_headers(self.user_token)
+            )
+            
+            if response.status_code == 200:
+                self.log_test(
+                    "Integration: Update Profile for Emergency",
+                    True,
+                    "User profile updated with German emergency information"
+                )
+            else:
+                self.log_test(
+                    "Integration: Update Profile for Emergency",
+                    False,
+                    f"Failed to update profile with status {response.status_code}"
+                )
+                return
+        except Exception as e:
+            self.log_test(
+                "Integration: Update Profile for Emergency",
+                False,
+                f"Error updating profile: {str(e)}"
+            )
+            return
+        
+        # Step 2: Create SOS alert with GPS coordinates (Berlin location)
+        sos_data = {
+            "location_lat": 52.5200,
+            "location_lng": 13.4050,
+            "location_address": "Brandenburger Tor, Berlin - Notfall-Integration-Test",
+            "alert_type": "medical",
+            "message": "Integration-Test: Medizinischer Notfall mit GPS-Koordinaten und aktualisierten Benutzerdaten"
+        }
+        
+        created_sos_id = None
+        
+        try:
+            response = self.session.post(
+                f"{self.base_url}/sos-alert",
+                json=sos_data,
+                headers=self.get_auth_headers(self.user_token)
+            )
+            
+            if response.status_code == 200:
+                created_sos = response.json()
+                created_sos_id = created_sos.get("id")
+                
+                self.log_test(
+                    "Integration: Create SOS with GPS",
+                    True,
+                    f"SOS alert created with GPS coordinates and updated user profile",
+                    {"sos_id": created_sos_id, "location": f"{sos_data['location_lat']}, {sos_data['location_lng']}"}
+                )
+            else:
+                self.log_test(
+                    "Integration: Create SOS with GPS",
+                    False,
+                    f"Failed to create SOS alert with status {response.status_code}"
+                )
+                return
+        except Exception as e:
+            self.log_test(
+                "Integration: Create SOS with GPS",
+                False,
+                f"Error creating SOS alert: {str(e)}"
+            )
+            return
+        
+        # Step 3: Admin activates the SOS alert
+        if created_sos_id:
+            try:
+                response = self.session.put(
+                    f"{self.base_url}/admin/sos/{created_sos_id}/activate",
+                    headers=self.get_auth_headers(self.admin_token)
+                )
+                
+                if response.status_code == 200:
+                    self.log_test(
+                        "Integration: Admin Activate SOS",
+                        True,
+                        "Admin successfully activated SOS alert in integration workflow"
+                    )
+                else:
+                    self.log_test(
+                        "Integration: Admin Activate SOS",
+                        False,
+                        f"Failed to activate SOS in integration test with status {response.status_code}"
+                    )
+                    return
+            except Exception as e:
+                self.log_test(
+                    "Integration: Admin Activate SOS",
+                    False,
+                    f"Error activating SOS in integration test: {str(e)}"
+                )
+                return
+        
+        # Step 4: Verify complete workflow - check SOS status and user profile
+        try:
+            # Check SOS status
+            sos_response = self.session.get(
+                f"{self.base_url}/admin/sos-alerts",
+                headers=self.get_auth_headers(self.admin_token)
+            )
+            
+            # Check user profile
+            profile_response = self.session.get(
+                f"{self.base_url}/me",
+                headers=self.get_auth_headers(self.user_token)
+            )
+            
+            if sos_response.status_code == 200 and profile_response.status_code == 200:
+                all_alerts = sos_response.json()
+                user_info = profile_response.json()
+                
+                # Find our SOS alert
+                our_alert = next((alert for alert in all_alerts if alert.get("id") == created_sos_id), None)
+                
+                if our_alert and our_alert.get("status") == "active":
+                    current_name = user_info.get("full_name")
+                    
+                    if current_name == profile_data["full_name"]:
+                        self.log_test(
+                            "Integration: Complete Workflow Verification",
+                            True,
+                            f"Complete integration successful: SOS activated (status: {our_alert.get('status')}) and profile updated (name: {current_name})",
+                            {
+                                "sos_status": our_alert.get("status"),
+                                "user_name": current_name,
+                                "gps_location": f"{sos_data['location_lat']}, {sos_data['location_lng']}"
+                            }
+                        )
+                    else:
+                        self.log_test(
+                            "Integration: Complete Workflow Verification",
+                            False,
+                            f"Profile name not persisted correctly in integration test"
+                        )
+                else:
+                    self.log_test(
+                        "Integration: Complete Workflow Verification",
+                        False,
+                        f"SOS alert not found or not activated correctly in integration test"
+                    )
+            else:
+                self.log_test(
+                    "Integration: Complete Workflow Verification",
+                    False,
+                    f"Failed to verify integration workflow - SOS status: {sos_response.status_code}, Profile status: {profile_response.status_code}"
+                )
+        except Exception as e:
+            self.log_test(
+                "Integration: Complete Workflow Verification",
+                False,
+                f"Error verifying integration workflow: {str(e)}"
+            )
+
     def run_all_tests(self):
         """Run all API tests including authentication"""
         print(f"🚨 Emergency SOS Backend API Testing with Authentication Started")
