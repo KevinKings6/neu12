@@ -546,4 +546,66 @@ const styles = StyleSheet.create({
   bottomPadding: {
     height: 100,
   },
+  // Name editing styles
+  nameEditContainer: {
+    gap: 12,
+  },
+  nameInput: {
+    borderWidth: 2,
+    borderColor: '#c41e3a',
+  },
+  nameActions: {
+    flexDirection: 'row',
+    justifyContent: 'flex-end',
+    gap: 8,
+  },
+  nameActionButton: {
+    paddingHorizontal: 16,
+    paddingVertical: 8,
+    borderRadius: 6,
+    minWidth: 80,
+    alignItems: 'center',
+  },
+  cancelButton: {
+    backgroundColor: '#666',
+  },
+  saveButton: {
+    backgroundColor: '#c41e3a',
+  },
+  cancelButtonText: {
+    color: '#fff',
+    fontSize: 14,
+    fontWeight: '600',
+  },
+  saveButtonText: {
+    color: '#fff',
+    fontSize: 14,
+    fontWeight: '600',
+  },
+  nameDisplayContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    backgroundColor: '#2a2a2a',
+    padding: 12,
+    borderRadius: 8,
+    borderWidth: 1,
+    borderColor: '#444',
+  },
+  nameDisplay: {
+    color: '#fff',
+    fontSize: 16,
+    flex: 1,
+  },
+  editNameButton: {
+    backgroundColor: '#c41e3a',
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: 6,
+  },
+  editNameButtonText: {
+    color: '#fff',
+    fontSize: 12,
+    fontWeight: '600',
+  },
 });
