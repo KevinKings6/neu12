@@ -605,7 +605,7 @@ class CriticalMemoryTester:
                         if me_response.status_code == 200 and users_response.status_code == 200:
                             user_profile = me_response.json()
                             users = users_response.json()
-                            updated_user = next((u for u in users if u.get("id") == integration_user_id), None)
+                            updated_user = next((u for u in users if u.get("id") == integration_user_id or u.get("_id") == integration_user_id), None)
                             
                             name_persisted = user_profile.get("full_name") == new_name
                             role_persisted = updated_user and updated_user.get("role") == new_role
