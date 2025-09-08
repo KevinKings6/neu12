@@ -1019,6 +1019,32 @@ async def create_emergency_user(current_admin: User = Depends(get_current_admin_
         print(f"Error creating emergency user: {e}")
         raise HTTPException(status_code=500, detail="Internal server error")
 
+# Test endpoint for creating emergency user role
+@api_router.post("/admin/create-emergency-user")
+async def create_emergency_user(current_admin: User = Depends(get_current_admin_user)):
+    """Create a test emergency user"""
+    try:
+        emergency_user = {
+            "username": "emergencyuser",
+            "email": "emergency@test.com",
+            "full_name": "Test Emergency User",
+            "role": "emergency",
+            "is_active": True,
+            "hashed_password": get_password_hash("emergency123"),
+            "created_at": datetime.utcnow()
+        }
+        
+        # Check if user already exists
+        existing_user = await db.users.find_one({"email": emergency_user["email"]})
+        if existing_user:
+            return {"message": "Test Emergency User already exists", "user_id": str(existing_user["_id"])}
+        
+        result = await db.users.insert_one(emergency_user)
+        return {"message": "Test Emergency User created successfully", "user_id": str(result.inserted_id)}
+    except Exception as e:
+        print(f"Error creating emergency user: {e}")
+        raise HTTPException(status_code=500, detail="Internal server error")
+
 if __name__ == "__main__":
     import uvicorn
     uvicorn.run(app, host="0.0.0.0", port=8000)
