@@ -266,8 +266,32 @@ class FixedCRUDTester:
         """Test FIXED User Role Management - PUT /api/admin/users/{user_id}/role"""
         print("\n=== Testing FIXED User Role Management ===")
         
-        if not self.admin_token or not self.test_user_ids:
-            self.log_test("User Role Management", False, "No admin token or test users available")
+        if not self.admin_token:
+            self.log_test("User Role Management", False, "No admin token available")
+            return
+        
+        # Get user IDs from admin users list if we don't have them
+        if not self.test_user_ids:
+            try:
+                users_response = self.session.get(
+                    f"{self.external_url}/admin/users",
+                    headers=self.get_auth_headers(self.admin_token)
+                )
+                if users_response.status_code == 200:
+                    users = users_response.json()
+                    # Get non-admin users for testing
+                    for user in users:
+                        if user.get("role") != "admin" and user.get("username") != "admin":
+                            user_id = user.get("id")
+                            if user_id and user_id not in self.test_user_ids:
+                                self.test_user_ids.append(user_id)
+                                if len(self.test_user_ids) >= 3:
+                                    break
+            except Exception as e:
+                self.log_test("Get Users for Role Testing", False, f"Error getting users: {str(e)}")
+        
+        if not self.test_user_ids:
+            self.log_test("User Role Management", False, "No test users available for role testing")
             return
         
         # Test all supported roles
