@@ -71,9 +71,9 @@ export default function AdminChat() {
   const [channels, setChannels] = useState<ChatGroup[]>([]);
 
   // Voice recording states
-  const [isRecording, setIsRecording] = useState(false);
+  const [isRecordingVoice, setIsRecordingVoice] = useState(false);
   const [recordingUri, setRecordingUri] = useState<string | null>(null);
-  const [recording, setRecording] = useState<Audio.Recording | null>(null);
+  const [voiceRecording, setVoiceRecording] = useState<Audio.Recording | null>(null);
   const [playingMessageId, setPlayingMessageId] = useState<string | null>(null);
 
   // Modal states
