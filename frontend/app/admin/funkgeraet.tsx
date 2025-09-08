@@ -21,7 +21,6 @@ import * as FileSystem from 'expo-file-system';
 
 const { width } = Dimensions.get('window');
 const BACKEND_URL = process.env.EXPO_PUBLIC_BACKEND_URL || 'https://ba41d31d-12ea-486d-ae78-9bc529c512b8.preview.emergentagent.com';
-const INTERNAL_BACKEND_URL = 'http://localhost:8001'; // Für Chat-Gruppen APIs
 
 interface ChatGroup {
   id: string;
