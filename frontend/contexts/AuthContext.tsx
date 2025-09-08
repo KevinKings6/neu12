@@ -1,9 +1,7 @@
 import React, { createContext, useContext, useState, useEffect, ReactNode } from 'react';
 import Constants from 'expo-constants';
 
-const BACKEND_URL = process.env.EXPO_PUBLIC_BACKEND_URL || 'http://localhost:8001';
-
-console.log('DEBUG: Using BACKEND_URL:', BACKEND_URL);
+const BACKEND_URL = process.env.EXPO_PUBLIC_BACKEND_URL || 'https://emergency-sos-3.preview.emergentagent.com';
 
 interface User {
   id: string;
