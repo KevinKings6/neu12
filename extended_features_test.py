@@ -197,7 +197,7 @@ class ExtendedFeaturesAPITester:
         print("\n=== Testing Emergency Role Management ===")
         
         if not self.admin_token or not self.test_user_id:
-            self.log_test("Emergency Role Management", False, "No admin token or test user ID available")
+            self.log_test("Emergency Role Management", False, f"Missing requirements - admin_token: {bool(self.admin_token)}, test_user_id: {self.test_user_id}")
             return
         
         # Test all roles including emergency
@@ -265,7 +265,7 @@ class ExtendedFeaturesAPITester:
         print("\n=== Testing User Status Toggle ===")
         
         if not self.admin_token or not self.test_user_id:
-            self.log_test("User Status Toggle", False, "No admin token or test user ID available")
+            self.log_test("User Status Toggle", False, f"Missing requirements - admin_token: {bool(self.admin_token)}, test_user_id: {self.test_user_id}")
             return
         
         # Test toggling user status
