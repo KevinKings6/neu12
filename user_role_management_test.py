@@ -169,7 +169,9 @@ class UserRoleManagementTester:
                     
                     # Store test user IDs for role change testing (exclude admin)
                     if user.get("username") in ["testuser1", "testteam1", "testuser_emergency"] and user.get("role") != "admin":
-                        self.test_user_ids.append(user.get("id"))
+                        user_id = user.get("id") or user.get("_id")  # Handle both id and _id fields
+                        if user_id:
+                            self.test_user_ids.append(user_id)
                 
                 self.log_test(
                     "Get Users List with Roles",
