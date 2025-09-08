@@ -102,7 +102,12 @@ export default function FunkgeraetScreen() {
 
       if (response.ok) {
         const channelsData = await response.json();
-        setChannels(channelsData);
+        // Ensure all channels have id field
+        const normalizedChannels = channelsData.map((channel: any) => ({
+          ...channel,
+          id: channel.id || channel._id
+        }));
+        setChannels(normalizedChannels);
       } else {
         setChannels([
           { id: '1', name: 'Einsatzleitung', description: 'Hauptkoordination', created_by: 'admin', members: [], is_active: true, created_at: new Date().toISOString() },
