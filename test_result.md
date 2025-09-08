@@ -432,10 +432,11 @@ metadata:
 
 test_plan:
   current_focus:
-    - "NEW SOS & PROFILE FEATURES TESTING COMPLETED SUCCESSFULLY"
-    - "SOS Activation Management working at 90%+ success rate"
-    - "Profile Name Update working at 90%+ success rate"
-    - "Integration tests passing - complete workflow functional"
+    - "CRITICAL MEMORY/PERSISTENCE TESTS COMPLETED SUCCESSFULLY - 100% SUCCESS RATE"
+    - "User Role Saving working at 100% success rate - all 4 roles (user, team, admin, emergency) tested"
+    - "Name Change Saving working at 100% success rate - German special characters fully supported"
+    - "Integration tests passing - complete workflow functional with both role and name changes"
+    - "user_id vs _id problem completely resolved"
   stuck_tasks: 
     - "Group management API endpoint (405 HTTP error - INFRASTRUCTURE LIMITATION)"
     - "Message sending UI interaction (send button not responding - FRONTEND)"
