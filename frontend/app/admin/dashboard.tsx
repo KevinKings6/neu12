@@ -529,10 +529,6 @@ export default function AdminDashboard() {
           >
             <Text style={styles.actionButtonText}>Gelöst</Text>
           </TouchableOpacity>
-        </View>
-      )}
-    </TouchableOpacity>
-  );
           <TouchableOpacity
             style={[styles.actionButton, styles.deleteButton]}
             onPress={() => deleteAlert(item._id || item.id)}
