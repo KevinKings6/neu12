@@ -642,9 +642,41 @@ export default function FunkgeraetScreen() {
             <Text style={styles.voiceMessageText}>
               Sprachnachricht ({item.voice_duration || 0}s)
             </Text>
+            
+            {/* Voice Message Actions */}
+            {isOwnMessage && (
+              <View style={styles.messageActions}>
+                <TouchableOpacity
+                  style={styles.deleteMessageButton}
+                  onPress={() => deleteMessage(item.id, item.user_id)}
+                >
+                  <Ionicons name="trash" size={16} color="#fff" />
+                </TouchableOpacity>
+              </View>
+            )}
           </View>
         ) : (
-          <Text style={styles.messageText}>{item.message}</Text>
+          <View>
+            <Text style={styles.messageText}>{item.message}</Text>
+            
+            {/* Text Message Actions */}
+            {isOwnMessage && (
+              <View style={styles.messageActions}>
+                <TouchableOpacity
+                  style={styles.editMessageButton}
+                  onPress={() => editMessage(item)}
+                >
+                  <Ionicons name="pencil" size={16} color="#fff" />
+                </TouchableOpacity>
+                <TouchableOpacity
+                  style={styles.deleteMessageButton}
+                  onPress={() => deleteMessage(item.id, item.user_id)}
+                >
+                  <Ionicons name="trash" size={16} color="#fff" />
+                </TouchableOpacity>
+              </View>
+            )}
+          </View>
         )}
       </View>
     );
