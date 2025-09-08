@@ -500,33 +500,34 @@ class ExtendedFeaturesAPITester:
             self.log_test("Voice Message Integration", False, "No admin token available")
             return
         
-        # Create a test group for voice messages
+        # Create a test group for voice messages using internal URL
         group_data = {"name": "Voice Test Channel", "description": "Channel for voice message testing"}
         group_id = None
         
         try:
             response = self.session.post(
-                f"{self.base_url}/admin/chat/groups",
+                f"{INTERNAL_URL}/admin/chat/groups",
                 json=group_data,
                 headers=self.get_auth_headers(self.admin_token)
             )
             
             if response.status_code == 200:
                 created_group = response.json()
-                group_id = created_group.get("id")
+                group_id = created_group.get("id") or created_group.get("_id")
                 if group_id:
                     self.created_group_ids.append(group_id)
                 
                 self.log_test(
                     "Create Voice Test Group",
                     True,
-                    "Voice test group created successfully"
+                    "Voice test group created successfully (internal URL)"
                 )
             else:
                 self.log_test(
                     "Create Voice Test Group",
                     False,
-                    f"Failed to create voice test group: {response.status_code}"
+                    f"Failed to create voice test group: {response.status_code}",
+                    {"response_text": response.text}
                 )
                 return
         except Exception as e:
