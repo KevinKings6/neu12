@@ -568,7 +568,9 @@ async def update_user_status(user_id: str, is_active: bool, current_admin: User 
     if not ObjectId.is_valid(user_id):
         raise HTTPException(status_code=400, detail="Invalid user ID")
     
-    if user_id == current_admin.id:
+    # Convert current_admin.id to string for comparison
+    current_admin_id_str = str(current_admin.id)
+    if user_id == current_admin_id_str:
         raise HTTPException(status_code=400, detail="Cannot deactivate yourself")
     
     result = await db.users.update_one(
