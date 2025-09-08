@@ -476,7 +476,10 @@ export default function AdminDashboard() {
   };
 
   const renderAlert = ({ item }: { item: SOSAlert }) => (
-    <View style={styles.alertCard}>
+    <TouchableOpacity 
+      style={styles.alertCard}
+      onPress={() => openSosDetails(item)}
+    >
       <View style={styles.alertHeader}>
         <View style={styles.alertInfo}>
           <View style={styles.alertTypeContainer}>
@@ -510,11 +513,19 @@ export default function AdminDashboard() {
         </View>
       )}
 
+      {/* Action Hint */}
+      <View style={styles.actionHint}>
+        <Text style={styles.actionHintText}>👆 Antippen für Details & GPS-Position</Text>
+      </View>
+
       {(item.status === 'active' || item.status === 'admin_active' || activeTab === 'alerts' || activeTab === 'active') && (
         <View style={styles.actionButtons}>
           <TouchableOpacity
             style={[styles.actionButton, styles.resolveButton]}
-            onPress={() => resolveAndRemoveFromActive(item._id || item.id)}
+            onPress={(e) => {
+              e.stopPropagation();
+              resolveAndRemoveFromActive(item._id || item.id);
+            }}
           >
             <Text style={styles.actionButtonText}>Gelöst</Text>
           </TouchableOpacity>
