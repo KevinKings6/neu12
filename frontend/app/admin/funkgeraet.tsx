@@ -62,6 +62,11 @@ export default function FunkgeraetScreen() {
   const [voiceRecording, setVoiceRecording] = useState<Audio.Recording | null>(null);
   const [playingMessageId, setPlayingMessageId] = useState<string | null>(null);
 
+  // Message management states
+  const [editingMessage, setEditingMessage] = useState<ChatMessage | null>(null);
+  const [editMessageModalVisible, setEditMessageModalVisible] = useState(false);
+  const [editMessageText, setEditMessageText] = useState('');
+
   // Modal states
   const [showChannelManager, setShowChannelManager] = useState(false);
   const [channelModalVisible, setChannelModalVisible] = useState(false);
