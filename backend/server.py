@@ -870,3 +870,81 @@ logger = logging.getLogger(__name__)
 @app.on_event("shutdown")
 async def shutdown_db_client():
     client.close()
+
+
+# Helper function for password hashing (if not already defined)
+def hash_password(password: str) -> str:
+    return pwd_context.hash(password)
+
+
+@api_router.put("/admin/users/{user_id}/role", response_model=dict)
+async def update_user_role(user_id: str, request: dict, current_admin: User = Depends(get_current_admin_user)):
+    """Admin updates user role"""
+    try:
+        # Validate role
+        role = request.get("role")
+        if role not in ["user", "team", "admin"]:
+            raise HTTPException(status_code=400, detail="Invalid role")
+        
+        # Don't allow changing own role
+        if user_id == str(current_admin.id):
+            raise HTTPException(status_code=400, detail="Cannot change own role")
+        
+        # Update user role
+        result = await db.users.update_one(
+            {"_id": ObjectId(user_id)},
+            {"$set": {"role": role}}
+        )
+        
+        if result.matched_count == 0:
+            raise HTTPException(status_code=404, detail="User not found")
+        
+        return {"message": f"User role updated to {role}"}
+    except Exception as e:
+        print(f"Error updating user role: {e}")
+        raise HTTPException(status_code=500, detail="Internal server error")
+
+# Test endpoint for direct role update
+@api_router.post("/admin/test-user-role")
+async def test_user_role_update():
+    """Test endpoint to create test users with different roles"""
+    try:
+        # Create test users with different roles
+        test_users = [
+            {
+                "username": "testuser1",
+                "email": "user@test.com", 
+                "full_name": "Test User",
+                "password": "test123",
+                "role": "user",
+                "is_active": True,
+                "created_at": datetime.utcnow()
+            },
+            {
+                "username": "testteam1", 
+                "email": "team@test.com",
+                "full_name": "Test Team Member",
+                "password": "test123",
+                "role": "team",
+                "is_active": True,
+                "created_at": datetime.utcnow()
+            }
+        ]
+        
+        for user_data in test_users:
+            # Check if user already exists
+            existing_user = await db.users.find_one({"email": user_data["email"]})
+            if not existing_user:
+                # Hash password
+                user_data["password"] = hash_password(user_data["password"])
+                await db.users.insert_one(user_data)
+        
+        return {"message": "Test users created with different roles"}
+    except Exception as e:
+        print(f"Error creating test users: {e}")
+        return {"error": str(e)}
+
+
+if __name__ == "__main__":
+    import uvicorn
+    uvicorn.run(app, host="0.0.0.0", port=8000)
