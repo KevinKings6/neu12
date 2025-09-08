@@ -1053,17 +1053,20 @@ class ExtendedFeaturesAPITester:
         if not self.admin_token:
             return
         
-        # Delete test groups
+        # Delete test groups using internal URL
+        cleaned_groups = 0
         for group_id in self.created_group_ids:
-            try:
-                self.session.delete(
-                    f"{self.base_url}/admin/chat/groups/{group_id}",
-                    headers=self.get_auth_headers(self.admin_token)
-                )
-            except Exception:
-                pass  # Ignore cleanup errors
+            if group_id:  # Only try to delete if group_id is not None
+                try:
+                    self.session.delete(
+                        f"{INTERNAL_URL}/admin/chat/groups/{group_id}",
+                        headers=self.get_auth_headers(self.admin_token)
+                    )
+                    cleaned_groups += 1
+                except Exception:
+                    pass  # Ignore cleanup errors
         
-        print(f"✅ Cleaned up {len(self.created_group_ids)} test groups")
+        print(f"✅ Cleaned up {cleaned_groups} test groups")
 
     def run_all_tests(self):
         """Run all extended features tests"""
