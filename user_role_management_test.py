@@ -335,7 +335,7 @@ class UserRoleManagementTester:
             
             if me_response.status_code == 200:
                 admin_user = me_response.json()
-                admin_user_id = admin_user.get("id")
+                admin_user_id = admin_user.get("id") or admin_user.get("_id")  # Handle both id and _id fields
                 
                 if admin_user_id:
                     role_data = {"role": "user"}
