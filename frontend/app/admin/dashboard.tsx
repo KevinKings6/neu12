@@ -648,6 +648,32 @@ export default function AdminDashboard() {
     }
   };
 
+  const updateUserRole = async () => {
+    if (!selectedUser || !token) return;
+
+    try {
+      const response = await fetch(`${BACKEND_URL}/api/admin/users/${selectedUser.id}/role`, {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`,
+        },
+        body: JSON.stringify({ role: selectedRole })
+      });
+
+      if (response.ok) {
+        setRoleModalVisible(false);
+        await loadUsers();
+        Alert.alert('Erfolg', `Benutzerrang wurde auf "${selectedRole}" geändert`);
+      } else {
+        Alert.alert('Fehler', 'Benutzerrang konnte nicht geändert werden');
+      }
+    } catch (error) {
+      console.error('Error updating user role:', error);
+      Alert.alert('Fehler', 'Fehler beim Ändern des Benutzerrangs');
+    }
+  };
+
   const updateUserProfile = async () => {
     if (!selectedUser || !token) return;
 
