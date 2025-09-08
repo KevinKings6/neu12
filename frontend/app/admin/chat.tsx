@@ -870,6 +870,45 @@ export default function AdminChat() {
           </View>
         </View>
       </Modal>
+      {/* Admin Profile Modal */}
+      <Modal
+        animationType="slide"
+        transparent={true}
+        visible={adminProfileModalVisible}
+        onRequestClose={() => setAdminProfileModalVisible(false)}
+      >
+        <View style={styles.modalOverlay}>
+          <View style={styles.modalContent}>
+            <View style={styles.modalHeader}>
+              <TouchableOpacity onPress={() => setAdminProfileModalVisible(false)}>
+                <Text style={styles.cancelButton}>Abbrechen</Text>
+              </TouchableOpacity>
+              <Text style={styles.modalTitle}>👤 Admin Profil</Text>
+              <TouchableOpacity onPress={saveAdminProfile}>
+                <Text style={styles.saveButton}>Speichern</Text>
+              </TouchableOpacity>
+            </View>
+
+            <View style={styles.modalForm}>
+              <View style={styles.inputGroup}>
+                <Text style={styles.inputLabel}>Anzeigename *</Text>
+                <TextInput
+                  style={styles.textModalInput}
+                  value={adminName}
+                  onChangeText={setAdminName}
+                  placeholder="Ihr Name im Chat"
+                  placeholderTextColor="#666"
+                  maxLength={50}
+                />
+              </View>
+              
+              <Text style={styles.profileHint}>
+                Dieser Name wird in Chat-Nachrichten angezeigt
+              </Text>
+            </View>
+          </View>
+        </View>
+      </Modal>
     </SafeAreaView>
   );
 }
