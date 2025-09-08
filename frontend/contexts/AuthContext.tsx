@@ -3,6 +3,8 @@ import Constants from 'expo-constants';
 
 const BACKEND_URL = process.env.EXPO_PUBLIC_BACKEND_URL || 'http://localhost:8001';
 
+console.log('DEBUG: Using BACKEND_URL:', BACKEND_URL);
+
 interface User {
   id: string;
   username: string;
