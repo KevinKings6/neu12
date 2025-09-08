@@ -630,6 +630,8 @@ export default function AdminDashboard() {
         return '#ff4444';
       case 'team':
         return '#ffaa00';
+      case 'emergency':
+        return '#ff6b35';
       case 'user':
         return '#00aa44';
       default:
@@ -643,6 +645,8 @@ export default function AdminDashboard() {
         return 'Admin';
       case 'team':
         return 'Team';
+      case 'emergency':
+        return 'Emergency';
       case 'user':
         return 'User';
       default:
