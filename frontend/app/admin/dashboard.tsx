@@ -1084,6 +1084,129 @@ export default function AdminDashboard() {
         </View>
       </Modal>
 
+      {/* SOS Detail Modal */}
+      <Modal
+        animationType="slide"
+        transparent={true}
+        visible={sosDetailModalVisible}
+        onRequestClose={() => setSosDetailModalVisible(false)}
+      >
+        <View style={styles.modalOverlay}>
+          <View style={styles.sosDetailModal}>
+            <View style={styles.modalHeader}>
+              <TouchableOpacity onPress={() => setSosDetailModalVisible(false)}>
+                <Text style={styles.cancelButton}>Schließen</Text>
+              </TouchableOpacity>
+              <Text style={styles.modalTitle}>🚨 SOS-Alarm Details</Text>
+              <TouchableOpacity 
+                onPress={() => selectedSOS && activateSOS(selectedSOS._id || selectedSOS.id)}
+                style={styles.activateButton}
+              >
+                <Text style={styles.activateButtonText}>AKTIVIEREN</Text>
+              </TouchableOpacity>
+            </View>
+
+            {selectedSOS && (
+              <ScrollView style={styles.sosDetailContent} showsVerticalScrollIndicator={false}>
+                {/* Alert Type & Time */}
+                <View style={styles.sosDetailSection}>
+                  <Text style={styles.sosDetailLabel}>🚨 Alarm-Typ</Text>
+                  <Text style={styles.sosDetailValue}>
+                    {selectedSOS.alert_type.toUpperCase()}
+                  </Text>
+                  <Text style={styles.sosDetailTime}>
+                    {new Date(selectedSOS.created_at).toLocaleString('de-DE', {
+                      year: 'numeric',
+                      month: 'long',
+                      day: 'numeric',
+                      hour: '2-digit',
+                      minute: '2-digit',
+                      second: '2-digit'
+                    })}
+                  </Text>
+                </View>
+
+                {/* User Information */}
+                <View style={styles.sosDetailSection}>
+                  <Text style={styles.sosDetailLabel}>👤 Benutzer-Informationen</Text>
+                  <Text style={styles.sosDetailValue}>
+                    {selectedSOS.user?.full_name || 'Name nicht verfügbar'}
+                  </Text>
+                  <Text style={styles.sosDetailSubValue}>
+                    ID: {selectedSOS.user_id}
+                  </Text>
+                  {selectedSOS.user?.email && (
+                    <Text style={styles.sosDetailSubValue}>
+                      📧 {selectedSOS.user.email}
+                    </Text>
+                  )}
+                </View>
+
+                {/* GPS Location */}
+                <View style={styles.sosDetailSection}>
+                  <Text style={styles.sosDetailLabel}>📍 GPS-Position</Text>
+                  {sosLocation ? (
+                    <View>
+                      <Text style={styles.sosDetailValue}>
+                        Lat: {sosLocation.latitude.toFixed(6)}
+                      </Text>
+                      <Text style={styles.sosDetailValue}>
+                        Lng: {sosLocation.longitude.toFixed(6)}
+                      </Text>
+                      <TouchableOpacity 
+                        style={styles.mapButton}
+                        onPress={() => {
+                          const url = `https://www.google.com/maps?q=${sosLocation.latitude},${sosLocation.longitude}`;
+                          // In a real app, you would use Linking.openURL(url)
+                          Alert.alert('GPS-Position', `Lat: ${sosLocation.latitude}, Lng: ${sosLocation.longitude}\n\nGoogle Maps URL: ${url}`);
+                        }}
+                      >
+                        <Text style={styles.mapButtonText}>🗺️ In Karte öffnen</Text>
+                      </TouchableOpacity>
+                    </View>
+                  ) : (
+                    <Text style={styles.sosDetailValue}>
+                      {selectedSOS.location_address || 'Keine GPS-Daten verfügbar'}
+                    </Text>
+                  )}
+                </View>
+
+                {/* Message */}
+                {selectedSOS.message && (
+                  <View style={styles.sosDetailSection}>
+                    <Text style={styles.sosDetailLabel}>💬 Nachricht</Text>
+                    <Text style={styles.sosDetailValue}>
+                      {selectedSOS.message}
+                    </Text>
+                  </View>
+                )}
+
+                {/* Status */}
+                <View style={styles.sosDetailSection}>
+                  <Text style={styles.sosDetailLabel}>📊 Status</Text>
+                  <View style={[styles.statusChip, { backgroundColor: getStatusColor(selectedSOS.status) + '20' }]}>
+                    <Text style={[styles.statusChipText, { color: getStatusColor(selectedSOS.status) }]}>
+                      {selectedSOS.status.toUpperCase()}
+                    </Text>
+                  </View>
+                </View>
+
+                {/* Action Instructions */}
+                <View style={styles.sosInstructionsBox}>
+                  <Text style={styles.sosInstructionsTitle}>📋 Anweisungen</Text>
+                  <Text style={styles.sosInstructionsText}>
+                    • Auf "AKTIVIEREN" klicken, um den SOS-Alarm zu bearbeiten{'\n'}
+                    • Der Alarm wird als AKTIV markiert{'\n'}
+                    • Er verschwindet aus der SOS-Liste{'\n'}
+                    • Einsatzkräfte werden benachrichtigt
+                  </Text>
+                </View>
+              </ScrollView>
+            )}
+          </View>
+        </View>
+      </Modal>
+
       {/* Role Modal */}
       <Modal
         animationType="slide"
