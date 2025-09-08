@@ -167,8 +167,8 @@ class UserRoleManagementTester:
                     role = user.get("role", "unknown")
                     role_counts[role] = role_counts.get(role, 0) + 1
                     
-                    # Store test user IDs for role change testing
-                    if user.get("username") in ["testuser1", "testteam1", "testuser_emergency"]:
+                    # Store test user IDs for role change testing (exclude admin)
+                    if user.get("username") in ["testuser1", "testteam1", "testuser_emergency"] and user.get("role") != "admin":
                         self.test_user_ids.append(user.get("id"))
                 
                 self.log_test(
