@@ -1,0 +1,21 @@
+{
+  "recommendations": [
+    // Python Backend
+    "ms-python.python",
+    "ms-python.vscode-pylance",
+    "ms-python.black-formatter",
+    "njpwerner.autodocstring",
+    
+    // React Native Frontend
+    "dsznajder.es7-react-js-snippets",
+    "dbaeumer.vscode-eslint",
+    "esbenp.prettier-vscode",
+    "msjsdiag.vscode-react-native",
+    
+    // General Development
+    "eamodio.gitlens",
+    "christian-kohler.path-intellisense",
+    "formulahendry.auto-rename-tag",
+    "rangav.vscode-thunder-client"
+  ]
+}
