@@ -2,7 +2,7 @@
 
 # IDE and editors
 .idea/
-.vscode/
+# Keeping .vscode for shared project configuration
 
 # Dependencies
 node_modules/
