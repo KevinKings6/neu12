@@ -21,7 +21,7 @@ code .
 
 ### Method 3: Using Git
 ```bash
-# Clone the repository
+# Clone the repository (replace with actual repository URL if different)
 git clone https://github.com/KevinKings6/neu12.git
 cd neu12
 
@@ -55,14 +55,14 @@ Install these extensions for the best development experience:
 - ESLint
 - Prettier - Code formatter
 - React Native Tools
-- TypeScript Vue Plugin (Volar)
 
 ### General Development:
 - GitLens
 - Path Intellisense
 - Auto Rename Tag
-- Bracket Pair Colorizer
 - Thunder Client (for API testing)
+
+> **Note**: Bracket pair colorization is now built into VS Code natively (since v1.60) and doesn't require an extension.
 
 ## Project Structure
 
@@ -109,6 +109,8 @@ pip install -r requirements.txt
 # Run the backend server
 uvicorn server:app --reload --host 0.0.0.0 --port 8000
 ```
+
+> **Note for Windows users**: If you're using VS Code on Windows, you may need to update the Python interpreter path in `.vscode/settings.json` to use `Scripts/python.exe` instead of `bin/python`.
 
 The backend API will be available at `http://localhost:8000`
 API documentation will be available at `http://localhost:8000/docs`
@@ -157,32 +159,12 @@ npm start
 
 ### 3. Debugging in VS Code
 
-Create a `.vscode/launch.json` file:
+This project includes a pre-configured `.vscode/launch.json` file for debugging the FastAPI backend. To use it:
 
-```json
-{
-  "version": "0.2.0",
-  "configurations": [
-    {
-      "name": "Python: FastAPI",
-      "type": "python",
-      "request": "launch",
-      "module": "uvicorn",
-      "args": [
-        "server:app",
-        "--reload",
-        "--host",
-        "0.0.0.0",
-        "--port",
-        "8000"
-      ],
-      "jinja": true,
-      "justMyCode": true,
-      "cwd": "${workspaceFolder}/backend"
-    }
-  ]
-}
-```
+1. Open the Run and Debug panel (Ctrl+Shift+D or Cmd+Shift+D)
+2. Select "Python: FastAPI Backend" from the dropdown
+3. Press F5 or click the green play button to start debugging
+4. Set breakpoints in your code by clicking on the left margin of the line numbers
 
 ### 4. Testing
 
